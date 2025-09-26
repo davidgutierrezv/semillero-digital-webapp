@@ -331,3 +331,71 @@ export const getAllStudentsData = async (courseId) => {
     throw error;
   }
 };
+
+/**
+ * Save teacher phone number
+ * @param {string} courseId - The course ID
+ * @param {string} teacherEmail - Teacher email
+ * @param {string} phoneNumber - Phone number
+ * @param {Object} teacherData - Additional teacher data
+ * @returns {Promise<void>}
+ */
+export const saveTeacherPhone = async (courseId, teacherEmail, phoneNumber, teacherData = {}) => {
+  try {
+    console.log('📱 Firestore: Saving teacher phone number');
+    console.log('📱 Course ID:', courseId);
+    console.log('📱 Teacher Email:', teacherEmail);
+    console.log('📱 Phone Number:', phoneNumber);
+    
+    const teacherRef = doc(db, 'courses', courseId, 'teachers', teacherEmail);
+    const dataToSave = {
+      email: teacherEmail,
+      phoneNumber: phoneNumber,
+      ...teacherData,
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(teacherRef, dataToSave, { merge: true });
+    console.log('✅ Firestore: Teacher phone number saved successfully');
+  } catch (error) {
+    console.error('🚨 Firestore Error saving teacher phone:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get teacher data including phone number
+ * @param {string} courseId - The course ID
+ * @param {string} teacherEmail - Teacher email
+ * @returns {Promise<Object|null>} - Teacher data or null
+ */
+export const getTeacherData = async (courseId, teacherEmail) => {
+  try {
+    const teacherRef = doc(db, 'courses', courseId, 'teachers', teacherEmail);
+    const snapshot = await getDoc(teacherRef);
+    
+    if (snapshot.exists()) {
+      return { id: snapshot.id, ...snapshot.data() };
+    }
+    return null;
+  } catch (error) {
+    console.error('🚨 Firestore Error getting teacher data:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all teachers data for a course
+ * @param {string} courseId - The course ID
+ * @returns {Promise<Array>} - Array of teacher data
+ */
+export const getAllTeachersData = async (courseId) => {
+  try {
+    const teachersRef = collection(db, 'courses', courseId, 'teachers');
+    const snapshot = await getDocs(teachersRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('🚨 Firestore Error getting all teachers data:', error);
+    throw error;
+  }
+};

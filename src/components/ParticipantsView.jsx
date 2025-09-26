@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getCourseTeachers, getCourseStudents, getGoogleAccessToken } from '../services/googleApi';
 import { getStudentEmail, getStudentName } from '../utils/studentUtils';
-import { getAllStudentsData } from '../services/firestore';
+import { getAllStudentsData, getAllTeachersData } from '../services/firestore';
 import { validateTelegramConfig, sendMessageToGroup, formatStudentMessage } from '../services/telegramApi';
-import StudentPhoneModal from './StudentPhoneModal';
+import PhoneModal from './PhoneModal';
 
 const ParticipantsView = ({ courseId, courseName }) => {
   const [teachers, setTeachers] = useState([]);
@@ -13,7 +13,9 @@ const ParticipantsView = ({ courseId, courseName }) => {
   const [activeTab, setActiveTab] = useState('students'); // 'students' or 'teachers'
   const [searchTerm, setSearchTerm] = useState('');
   const [studentsData, setStudentsData] = useState({}); // Datos adicionales de estudiantes (teléfonos, etc.)
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [teachersData, setTeachersData] = useState({}); // Datos adicionales de profesores (teléfonos, etc.)
+  const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [participantType, setParticipantType] = useState('student'); // 'student' or 'teacher'
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [telegramConfig, setTelegramConfig] = useState({ ready: false });
 
@@ -21,6 +23,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
     if (courseId) {
       loadParticipants();
       loadStudentsData();
+      loadTeachersData();
     }
     // Validar configuración de Telegram
     setTelegramConfig(validateTelegramConfig());
@@ -62,27 +65,53 @@ const ParticipantsView = ({ courseId, courseName }) => {
     }
   };
 
-  const handleEditPhone = (student) => {
-    const studentData = {
-      name: getParticipantName(student),
-      email: getParticipantEmail(student),
-      userId: student.userId,
-      profileId: student.profile?.id
+  const loadTeachersData = async () => {
+    try {
+      const allTeachersData = await getAllTeachersData(courseId);
+      const teachersDataMap = {};
+      
+      allTeachersData.forEach(teacherData => {
+        teachersDataMap[teacherData.email] = teacherData;
+      });
+      
+      setTeachersData(teachersDataMap);
+    } catch (error) {
+      console.error('Error loading teachers data:', error);
+    }
+  };
+
+  const handleEditPhone = (participant, type = 'student') => {
+    const participantData = {
+      name: getParticipantName(participant),
+      email: getParticipantEmail(participant),
+      userId: participant.userId,
+      profileId: participant.profile?.id
     };
-    setSelectedStudent(studentData);
+    setSelectedParticipant(participantData);
+    setParticipantType(type);
     setShowPhoneModal(true);
   };
 
   const handlePhoneSaved = (phoneNumber) => {
     // Actualizar los datos locales
-    if (selectedStudent) {
-      setStudentsData(prev => ({
-        ...prev,
-        [selectedStudent.email]: {
-          ...prev[selectedStudent.email],
-          phoneNumber
-        }
-      }));
+    if (selectedParticipant) {
+      if (participantType === 'teacher') {
+        setTeachersData(prev => ({
+          ...prev,
+          [selectedParticipant.email]: {
+            ...prev[selectedParticipant.email],
+            phoneNumber
+          }
+        }));
+      } else {
+        setStudentsData(prev => ({
+          ...prev,
+          [selectedParticipant.email]: {
+            ...prev[selectedParticipant.email],
+            phoneNumber
+          }
+        }));
+      }
     }
   };
 
@@ -115,8 +144,8 @@ const ParticipantsView = ({ courseId, courseName }) => {
     const name = getParticipantName(participant);
     const email = getParticipantEmail(participant);
     const photoUrl = participant.profile?.photoUrl;
-    const studentData = studentsData[email];
-    const hasPhone = studentData?.phoneNumber;
+    const participantData = role === 'teacher' ? teachersData[email] : studentsData[email];
+    const hasPhone = participantData?.phoneNumber;
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
@@ -162,7 +191,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
             </p>
             {hasPhone && (
               <p className="text-xs text-gray-500 truncate">
-                📱 {studentData.phoneNumber}
+                📱 {participantData.phoneNumber}
               </p>
             )}
             {participant.profile?.id && participant.profile.id !== email && (
@@ -186,22 +215,20 @@ const ParticipantsView = ({ courseId, courseName }) => {
               </svg>
             </button>
 
-            {/* Phone Button - Solo para estudiantes */}
-            {role === 'student' && (
-              <button
-                onClick={() => handleEditPhone(participant)}
-                className={`p-2 transition-colors ${
-                  hasPhone 
-                    ? 'text-green-500 hover:text-green-600' 
-                    : 'text-gray-400 hover:text-blue-600'
-                }`}
-                title={hasPhone ? 'Editar teléfono' : 'Agregar teléfono'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </button>
-            )}
+            {/* Phone Button - Para estudiantes y profesores */}
+            <button
+              onClick={() => handleEditPhone(participant, role)}
+              className={`p-2 transition-colors ${
+                hasPhone 
+                  ? 'text-green-500 hover:text-green-600' 
+                  : 'text-gray-400 hover:text-blue-600'
+              }`}
+              title={hasPhone ? 'Editar teléfono' : 'Agregar teléfono'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            </button>
 
             {/* Telegram Button - Solo si tiene teléfono y Telegram está configurado */}
             {role === 'student' && hasPhone && telegramConfig.ready && (
@@ -381,7 +408,8 @@ const ParticipantsView = ({ courseId, courseName }) => {
           </div>
           <div>
             <div className="text-2xl font-bold text-purple-600">
-              {Object.keys(studentsData).filter(email => studentsData[email].phoneNumber).length}
+              {Object.keys(studentsData).filter(email => studentsData[email].phoneNumber).length + 
+               Object.keys(teachersData).filter(email => teachersData[email].phoneNumber).length}
             </div>
             <div className="text-sm text-gray-600">Con Teléfono</div>
           </div>
@@ -414,14 +442,15 @@ const ParticipantsView = ({ courseId, courseName }) => {
       )}
 
       {/* Phone Modal */}
-      <StudentPhoneModal
+      <PhoneModal
         isOpen={showPhoneModal}
         onClose={() => {
           setShowPhoneModal(false);
-          setSelectedStudent(null);
+          setSelectedParticipant(null);
         }}
-        student={selectedStudent}
+        participant={selectedParticipant}
         courseId={courseId}
+        participantType={participantType}
         onSave={handlePhoneSaved}
       />
     </div>
