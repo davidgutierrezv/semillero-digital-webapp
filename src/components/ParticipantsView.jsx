@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getCourseTeachers, getCourseStudents, getGoogleAccessToken } from '../services/googleApi';
 import { getStudentEmail, getStudentName } from '../utils/studentUtils';
-import { getAllStudentsData, getAllTeachersData } from '../services/firestore';
-import { validateTelegramConfig, sendMessageToGroup, formatStudentMessage } from '../services/telegramApi';
+import { getAllStudentsData, getAllTeachersData, isUserRegisteredInTelegram, saveUserChatId } from '../services/firestore';
+import { validateTelegramConfig, sendMessageToUser, formatStudentMessage, getBotInfo } from '../services/telegramApi';
 import PhoneModal from './PhoneModal';
 import TelegramMessageModal from './TelegramMessageModal';
 
@@ -15,12 +15,14 @@ const ParticipantsView = ({ courseId, courseName }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [studentsData, setStudentsData] = useState({}); // Datos adicionales de estudiantes (teléfonos, etc.)
   const [teachersData, setTeachersData] = useState({}); // Datos adicionales de profesores (teléfonos, etc.)
+  const [telegramRegistrations, setTelegramRegistrations] = useState({}); // Estado de registro en Telegram
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [participantType, setParticipantType] = useState('student'); // 'student' or 'teacher'
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [selectedTelegramParticipant, setSelectedTelegramParticipant] = useState(null);
   const [telegramConfig, setTelegramConfig] = useState({ ready: false });
+  const [botInfo, setBotInfo] = useState(null);
   const [sendingTelegram, setSendingTelegram] = useState(null); // Email del participante al que se está enviando
 
   useEffect(() => {
@@ -28,10 +30,16 @@ const ParticipantsView = ({ courseId, courseName }) => {
       loadParticipants();
       loadStudentsData();
       loadTeachersData();
+      loadTelegramRegistrations();
     }
     // Validar configuración de Telegram
-    setTelegramConfig(validateTelegramConfig());
-    console.log('🔍 Telegram Token:', import.meta.env.VITE_TELEGRAM_BOT_TOKEN ? 'CONFIGURADO ✅' : 'NO CONFIGURADO ❌');
+    const config = validateTelegramConfig();
+    setTelegramConfig(config);
+    
+    // Cargar información del bot si está configurado
+    if (config.ready) {
+      loadBotInfo();
+    }
   }, [courseId]);
 
   const loadParticipants = async () => {
@@ -82,6 +90,62 @@ const ParticipantsView = ({ courseId, courseName }) => {
       setTeachersData(teachersDataMap);
     } catch (error) {
       console.error('Error loading teachers data:', error);
+    }
+  };
+
+  const loadTelegramRegistrations = async () => {
+    try {
+      // Cargar registros de Telegram para todos los participantes
+      const allParticipants = [...students, ...teachers];
+      const registrations = {};
+      
+      for (const participant of allParticipants) {
+        const email = getParticipantEmail(participant);
+        const isRegistered = await isUserRegisteredInTelegram(courseId, email);
+        registrations[email] = isRegistered;
+      }
+      
+      setTelegramRegistrations(registrations);
+    } catch (error) {
+      console.error('Error loading telegram registrations:', error);
+    }
+  };
+
+  const loadBotInfo = async () => {
+    try {
+      const info = await getBotInfo();
+      setBotInfo(info);
+      console.log('🤖 Bot Info:', info);
+    } catch (error) {
+      console.error('Error loading bot info:', error);
+    }
+  };
+
+  // Función temporal para registrar usuarios de prueba en Telegram
+  const handleRegisterUserInTelegram = async (participant) => {
+    try {
+      const email = getParticipantEmail(participant);
+      const name = getParticipantName(participant);
+      
+      // Chat ID de prueba (en producción esto vendría del bot)
+      const testChatId = `test_${Date.now()}`;
+      
+      await saveUserChatId(courseId, email, testChatId, {
+        name: name,
+        registeredAt: new Date()
+      });
+      
+      // Actualizar estado local
+      setTelegramRegistrations(prev => ({
+        ...prev,
+        [email]: true
+      }));
+      
+      alert(`✅ ${name} registrado en Telegram (modo prueba)\n\nAhora puedes enviarle mensajes por Telegram.`);
+      
+    } catch (error) {
+      console.error('Error registering user in Telegram:', error);
+      alert('❌ Error al registrar usuario en Telegram');
     }
   };
 
@@ -138,21 +202,39 @@ const ParticipantsView = ({ courseId, courseName }) => {
     try {
       setSendingTelegram(selectedTelegramParticipant.email);
       
-      // Nota: En una implementación real, necesitarías el chat_id del usuario
-      // Por ahora, mostraremos una notificación de que se enviaría el mensaje
-      console.log('📱 Mensaje que se enviaría por Telegram:');
+      console.log('📱 Enviando mensaje por Telegram:');
       console.log('👤 Para:', selectedTelegramParticipant.name, '(' + selectedTelegramParticipant.email + ')');
       console.log('📝 Mensaje:', message);
       
-      // Simular envío (en producción usarías sendMessageToPhone)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Verificar si el usuario está registrado en Telegram
+      const isRegistered = telegramRegistrations[selectedTelegramParticipant.email];
+      
+      if (!isRegistered) {
+        throw new Error('El usuario no está registrado en Telegram. Debe enviar /start al bot primero.');
+      }
+      
+      // Enviar mensaje real usando la API de Telegram
+      await sendMessageToUser(selectedTelegramParticipant.email, message, courseId);
       
       // Mostrar notificación de éxito
-      alert(`✅ Mensaje enviado a ${selectedTelegramParticipant.name}\n\n📱 Número: ${selectedTelegramParticipant.phoneNumber}\n\n📝 El usuario recibirá el mensaje en Telegram si tiene el bot configurado.`);
+      alert(`✅ Mensaje enviado exitosamente a ${selectedTelegramParticipant.name}\n\n📱 Número: ${selectedTelegramParticipant.phoneNumber}\n\n📝 El mensaje ha sido entregado por Telegram.`);
       
     } catch (error) {
       console.error('Error sending Telegram message:', error);
-      alert('❌ Error al enviar mensaje por Telegram');
+      
+      let errorMessage = '❌ Error al enviar mensaje por Telegram';
+      
+      if (error.message.includes('no registrado')) {
+        const botUsername = botInfo?.username || 'tu_bot';
+        errorMessage = `❌ ${selectedTelegramParticipant.name} no está registrado en Telegram.\n\n📋 Instrucciones:\n1. Buscar @${botUsername} en Telegram\n2. Enviar /start al bot\n3. Seguir las instrucciones de registro\n\n🔗 Enlace directo: https://t.me/${botUsername}`;
+      } else if (error.message.includes('Forbidden')) {
+        errorMessage = `❌ El usuario ${selectedTelegramParticipant.name} bloqueó el bot o no ha iniciado conversación.`;
+      } else if (error.message.includes('not found')) {
+        const botUsername = botInfo?.username || 'tu_bot';
+        errorMessage = `❌ Chat no encontrado.\n\n📋 ${selectedTelegramParticipant.name} debe:\n1. Buscar @${botUsername} en Telegram\n2. Enviar /start al bot\n3. Completar el registro\n\n🔗 Enlace: https://t.me/${botUsername}`;
+      }
+      
+      alert(errorMessage);
       throw error;
     } finally {
       setSendingTelegram(null);
@@ -192,6 +274,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
     const photoUrl = participant.profile?.photoUrl;
     const participantData = role === 'teacher' ? teachersData[email] : studentsData[email];
     const hasPhone = participantData?.phoneNumber;
+    const isRegisteredInTelegram = telegramRegistrations[email];
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
@@ -229,6 +312,11 @@ const ParticipantsView = ({ courseId, courseName }) => {
               {hasPhone && (
                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                   📱
+                </span>
+              )}
+              {isRegisteredInTelegram && (
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                  🤖
                 </span>
               )}
             </div>
@@ -276,26 +364,50 @@ const ParticipantsView = ({ courseId, courseName }) => {
               </svg>
             </button>
 
-            {/* Telegram Button - Solo si tiene teléfono y Telegram está configurado */}
+            {/* Telegram Buttons - Solo si tiene teléfono y Telegram está configurado */}
             {hasPhone && telegramConfig.ready && (
-              <button
-                onClick={() => handleOpenTelegramModal(participant, role)}
-                disabled={sendingTelegram === email}
-                className={`p-2 transition-colors ${
-                  sendingTelegram === email
-                    ? 'text-blue-300 cursor-not-allowed'
-                    : 'text-gray-400 hover:text-blue-500'
-                }`}
-                title={sendingTelegram === email ? 'Enviando mensaje...' : 'Enviar mensaje por Telegram'}
-              >
-                {sendingTelegram === email ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                  </svg>
+              <>
+                {/* Botón de Telegram (enviar mensaje) */}
+                <button
+                  onClick={() => handleOpenTelegramModal(participant, role)}
+                  disabled={sendingTelegram === email || !isRegisteredInTelegram}
+                  className={`p-2 transition-colors ${
+                    sendingTelegram === email
+                      ? 'text-blue-300 cursor-not-allowed'
+                      : !isRegisteredInTelegram
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-blue-500'
+                  }`}
+                  title={
+                    sendingTelegram === email 
+                      ? 'Enviando mensaje...' 
+                      : !isRegisteredInTelegram
+                      ? 'Usuario no registrado en Telegram'
+                      : 'Enviar mensaje por Telegram'
+                  }
+                >
+                  {sendingTelegram === email ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  ) : (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                    </svg>
+                  )}
+                </button>
+
+                {/* Botón de Registro (solo si no está registrado) */}
+                {!isRegisteredInTelegram && (
+                  <button
+                    onClick={() => handleRegisterUserInTelegram(participant)}
+                    className="p-2 text-gray-400 hover:text-green-500 transition-colors"
+                    title="Registrar en Telegram (modo prueba)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </button>
                 )}
-              </button>
+              </>
             )}
           </div>
         </div>

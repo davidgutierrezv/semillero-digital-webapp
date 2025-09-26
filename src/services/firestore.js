@@ -399,3 +399,88 @@ export const getAllTeachersData = async (courseId) => {
     throw error;
   }
 };
+
+/**
+ * Save user Telegram chat_id
+ * @param {string} courseId - The course ID
+ * @param {string} userEmail - User email
+ * @param {string} chatId - Telegram chat_id
+ * @param {Object} userData - Additional user data
+ * @returns {Promise<void>}
+ */
+export const saveUserChatId = async (courseId, userEmail, chatId, userData = {}) => {
+  try {
+    console.log('📱 Firestore: Saving user chat_id');
+    console.log('📱 Course ID:', courseId);
+    console.log('📱 User Email:', userEmail);
+    console.log('📱 Chat ID:', chatId);
+    
+    const userRef = doc(db, 'courses', courseId, 'telegram_users', userEmail);
+    const dataToSave = {
+      email: userEmail,
+      chatId: chatId,
+      registeredAt: serverTimestamp(),
+      ...userData,
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(userRef, dataToSave, { merge: true });
+    console.log('✅ Firestore: User chat_id saved successfully');
+  } catch (error) {
+    console.error('🚨 Firestore Error saving user chat_id:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get user Telegram chat_id
+ * @param {string} courseId - The course ID
+ * @param {string} userEmail - User email
+ * @returns {Promise<string|null>} - Chat ID or null
+ */
+export const getUserChatId = async (courseId, userEmail) => {
+  try {
+    const userRef = doc(db, 'courses', courseId, 'telegram_users', userEmail);
+    const snapshot = await getDoc(userRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.data().chatId;
+    }
+    return null;
+  } catch (error) {
+    console.error('🚨 Firestore Error getting user chat_id:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all registered Telegram users for a course
+ * @param {string} courseId - The course ID
+ * @returns {Promise<Array>} - Array of registered users
+ */
+export const getAllTelegramUsers = async (courseId) => {
+  try {
+    const usersRef = collection(db, 'courses', courseId, 'telegram_users');
+    const snapshot = await getDocs(usersRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('🚨 Firestore Error getting all telegram users:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if user is registered in Telegram
+ * @param {string} courseId - The course ID
+ * @param {string} userEmail - User email
+ * @returns {Promise<boolean>} - True if registered
+ */
+export const isUserRegisteredInTelegram = async (courseId, userEmail) => {
+  try {
+    const chatId = await getUserChatId(courseId, userEmail);
+    return !!chatId;
+  } catch (error) {
+    console.error('🚨 Firestore Error checking telegram registration:', error);
+    return false;
+  }
+};

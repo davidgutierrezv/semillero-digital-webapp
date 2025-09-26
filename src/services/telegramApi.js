@@ -8,22 +8,22 @@ const TELEGRAM_BOT_TOKEN = import.meta.env?.VITE_TELEGRAM_BOT_TOKEN || window.RE
 const TELEGRAM_API_URL = TELEGRAM_BOT_TOKEN ? `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}` : null;
 
 /**
- * Enviar mensaje a un número de teléfono específico
- * @param {string} phoneNumber - Número de teléfono (con código de país)
+ * Enviar mensaje a un chat_id específico
+ * @param {string} chatId - Chat ID del usuario en Telegram
  * @param {string} message - Mensaje a enviar
  * @returns {Promise<Object>} - Respuesta de la API
  */
-export const sendMessageToPhone = async (phoneNumber, message) => {
+export const sendMessageToChatId = async (chatId, message) => {
   try {
-    console.log('📱 Telegram: Sending message to phone:', phoneNumber);
+    console.log('📱 Telegram: Sending message to chat_id:', chatId);
     
     if (!TELEGRAM_BOT_TOKEN) {
       throw new Error('Telegram Bot Token no configurado');
     }
 
-    // Nota: Telegram no permite enviar mensajes directamente a números de teléfono
-    // El usuario debe iniciar una conversación con el bot primero
-    // Esta función es un placeholder para la funcionalidad futura
+    if (!TELEGRAM_API_URL) {
+      throw new Error('Telegram API URL no disponible');
+    }
     
     const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
       method: 'POST',
@@ -31,7 +31,7 @@ export const sendMessageToPhone = async (phoneNumber, message) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chat_id: phoneNumber, // En realidad sería el chat_id del usuario
+        chat_id: chatId,
         text: message,
         parse_mode: 'HTML'
       })
@@ -48,6 +48,34 @@ export const sendMessageToPhone = async (phoneNumber, message) => {
     
   } catch (error) {
     console.error('🚨 Telegram Error sending message:', error);
+    throw error;
+  }
+};
+
+/**
+ * Enviar mensaje a un usuario por email (busca su chat_id)
+ * @param {string} userEmail - Email del usuario
+ * @param {string} message - Mensaje a enviar
+ * @param {string} courseId - ID del curso
+ * @returns {Promise<Object>} - Respuesta de la API
+ */
+export const sendMessageToUser = async (userEmail, message, courseId) => {
+  try {
+    console.log('📱 Telegram: Sending message to user:', userEmail);
+    
+    // Importar función de Firestore para obtener chat_id
+    const { getUserChatId } = await import('./firestore');
+    
+    const chatId = await getUserChatId(courseId, userEmail);
+    
+    if (!chatId) {
+      throw new Error('Usuario no registrado en Telegram. Debe enviar /start al bot primero.');
+    }
+    
+    return await sendMessageToChatId(chatId, message);
+    
+  } catch (error) {
+    console.error('🚨 Telegram Error sending message to user:', error);
     throw error;
   }
 };
