@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -86,11 +87,15 @@ function App() {
     return <LoginScreen />;
   }
 
+  const handleRoleSelected = (role) => {
+    setSelectedRole(role);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header user={user} userRole={userRole} />
+      <Header user={user} userRole={selectedRole || userRole} />
       <main className="flex-1">
-        <RoleDetector user={user} />
+        <RoleDetector user={user} onRoleSelected={handleRoleSelected} />
       </main>
       <Footer />
     </div>

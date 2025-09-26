@@ -112,11 +112,12 @@ export const getCourseWorkDetailed = async (courseId, accessToken) => {
       return {
         ...work,
         workType,
+        typeName: getWorkTypeName(workType),
         typeIcon: getWorkTypeIcon(workType),
         typeColor: getWorkTypeColor(workType),
         hasAttachments: work.materials && work.materials.length > 0,
         attachmentCount: work.materials ? work.materials.length : 0,
-        isQuiz: workType === 'QUIZ',
+        isQuiz: workType === 'QUIZ_ASSIGNMENT',
         hasRubric: work.associatedWithDeveloper || false,
         formattedDueDate: work.dueDate ? formatDueDate(work.dueDate, work.dueTime) : null
       };
@@ -155,19 +156,78 @@ export const getCourseWork = async (courseId, accessToken) => {
 };
 
 /**
- * Get course materials (announcements, topics)
+ * Get course announcements with detailed information
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of announcement objects with type info
+ */
+export const getCourseAnnouncements = async (courseId, accessToken) => {
+  try {
+    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/announcements`;
+    const data = await fetchGoogleApi(url, accessToken);
+    const announcements = data.announcements || [];
+    
+    // Enrich announcements with type information
+    const detailedAnnouncements = announcements.map(announcement => ({
+      ...announcement,
+      workType: 'ANNOUNCEMENT',
+      typeName: getWorkTypeName('ANNOUNCEMENT'),
+      typeIcon: getWorkTypeIcon('ANNOUNCEMENT'),
+      typeColor: getWorkTypeColor('ANNOUNCEMENT'),
+      hasAttachments: announcement.materials && announcement.materials.length > 0,
+      attachmentCount: announcement.materials ? announcement.materials.length : 0,
+      formattedDueDate: null // Announcements don't have due dates
+    }));
+    
+    return detailedAnnouncements;
+  } catch (error) {
+    console.error('Error getting course announcements:', error);
+    return [];
+  }
+};
+
+/**
+ * Get course materials (announcements, topics) - Legacy function
  * @param {string} courseId - The course ID
  * @param {string} accessToken - The user's access token
  * @returns {Promise<Array>} - Array of course materials
  */
 export const getCourseMaterials = async (courseId, accessToken) => {
+  return getCourseAnnouncements(courseId, accessToken);
+};
+
+/**
+ * Get all course content (coursework + announcements) with detailed information
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of all course content with type info
+ */
+export const getAllCourseContent = async (courseId, accessToken) => {
   try {
-    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/announcements`;
-    const data = await fetchGoogleApi(url, accessToken);
-    return data.announcements || [];
+    // Get both coursework and announcements in parallel
+    const [coursework, announcements] = await Promise.all([
+      getCourseWorkDetailed(courseId, accessToken),
+      getCourseAnnouncements(courseId, accessToken)
+    ]);
+    
+    // Combine and sort by creation time (newest first)
+    const allContent = [...coursework, ...announcements];
+    allContent.sort((a, b) => {
+      const dateA = new Date(a.creationTime || a.updateTime);
+      const dateB = new Date(b.creationTime || b.updateTime);
+      return dateB - dateA;
+    });
+    
+    return allContent;
   } catch (error) {
-    console.error('Error getting course materials:', error);
-    return [];
+    console.error('Error getting all course content:', error);
+    // Fallback to just coursework if announcements fail
+    try {
+      return await getCourseWorkDetailed(courseId, accessToken);
+    } catch (fallbackError) {
+      console.error('Error getting coursework fallback:', fallbackError);
+      return [];
+    }
   }
 };
 
@@ -194,19 +254,43 @@ export const getCourseTopics = async (courseId, accessToken) => {
  * @returns {string} - Work type
  */
 const determineWorkType = (work) => {
+  // Check for assignment submission (Tarea)
   if (work.assignmentSubmission) {
     return 'ASSIGNMENT';
-  } else if (work.shortAnswerSubmission) {
-    return 'SHORT_ANSWER';
-  } else if (work.multipleChoiceSubmission) {
-    return 'MULTIPLE_CHOICE';
-  } else if (work.materials && work.materials.some(m => m.form)) {
-    return 'QUIZ';
-  } else if (work.materials && work.materials.length > 0) {
+  }
+  
+  // Check for short answer question (Pregunta)
+  if (work.shortAnswerSubmission) {
+    return 'SHORT_ANSWER_QUESTION';
+  }
+  
+  // Check for multiple choice question (Pregunta de opción múltiple)
+  if (work.multipleChoiceSubmission) {
+    return 'MULTIPLE_CHOICE_QUESTION';
+  }
+  
+  // Check for materials with forms (Tarea de cuestionario)
+  if (work.materials && work.materials.some(m => m.form)) {
+    return 'QUIZ_ASSIGNMENT';
+  }
+  
+  // Check if it's a material post (Material)
+  if (work.materials && work.materials.length > 0 && !work.assignmentSubmission && !work.shortAnswerSubmission && !work.multipleChoiceSubmission) {
     return 'MATERIAL';
-  } else {
+  }
+  
+  // Check for topic (Tema)
+  if (work.topicId || (!work.materials && !work.assignmentSubmission && !work.shortAnswerSubmission && !work.multipleChoiceSubmission)) {
     return 'TOPIC';
   }
+  
+  // Check for reused post (Reutilizar publicación) - usually has a specific field
+  if (work.individualStudentsOptions || work.creationTime !== work.updateTime) {
+    return 'REUSED_POST';
+  }
+  
+  // Default fallback
+  return 'ANNOUNCEMENT';
 };
 
 /**
@@ -216,12 +300,14 @@ const determineWorkType = (work) => {
  */
 const getWorkTypeIcon = (workType) => {
   const icons = {
-    'ASSIGNMENT': '📝',
-    'SHORT_ANSWER': '✏️',
-    'MULTIPLE_CHOICE': '☑️',
-    'QUIZ': '📋',
-    'MATERIAL': '📎',
-    'TOPIC': '📚'
+    'ASSIGNMENT': '📝',                    // Tarea
+    'QUIZ_ASSIGNMENT': '📋',              // Tarea de cuestionario
+    'SHORT_ANSWER_QUESTION': '❓',        // Pregunta
+    'MULTIPLE_CHOICE_QUESTION': '☑️',     // Pregunta de opción múltiple
+    'MATERIAL': '📎',                     // Material
+    'REUSED_POST': '🔄',                  // Reutilizar publicación
+    'TOPIC': '📚',                        // Tema
+    'ANNOUNCEMENT': '📢'                  // Anuncio
   };
   return icons[workType] || '📄';
 };
@@ -233,14 +319,35 @@ const getWorkTypeIcon = (workType) => {
  */
 const getWorkTypeColor = (workType) => {
   const colors = {
-    'ASSIGNMENT': 'bg-blue-50 text-blue-700 border-blue-200',
-    'SHORT_ANSWER': 'bg-green-50 text-green-700 border-green-200',
-    'MULTIPLE_CHOICE': 'bg-purple-50 text-purple-700 border-purple-200',
-    'QUIZ': 'bg-orange-50 text-orange-700 border-orange-200',
-    'MATERIAL': 'bg-gray-50 text-gray-700 border-gray-200',
-    'TOPIC': 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    'ASSIGNMENT': 'bg-blue-50 text-blue-700 border-blue-200',              // Tarea - Azul
+    'QUIZ_ASSIGNMENT': 'bg-orange-50 text-orange-700 border-orange-200',   // Tarea de cuestionario - Naranja
+    'SHORT_ANSWER_QUESTION': 'bg-green-50 text-green-700 border-green-200', // Pregunta - Verde
+    'MULTIPLE_CHOICE_QUESTION': 'bg-purple-50 text-purple-700 border-purple-200', // Pregunta múltiple - Morado
+    'MATERIAL': 'bg-gray-50 text-gray-700 border-gray-200',                // Material - Gris
+    'REUSED_POST': 'bg-cyan-50 text-cyan-700 border-cyan-200',             // Reutilizar - Cian
+    'TOPIC': 'bg-indigo-50 text-indigo-700 border-indigo-200',             // Tema - Índigo
+    'ANNOUNCEMENT': 'bg-yellow-50 text-yellow-700 border-yellow-200'       // Anuncio - Amarillo
   };
   return colors[workType] || 'bg-gray-50 text-gray-700 border-gray-200';
+};
+
+/**
+ * Get human-readable name for work type in Spanish
+ * @param {string} workType - Type of work
+ * @returns {string} - Human-readable name
+ */
+const getWorkTypeName = (workType) => {
+  const names = {
+    'ASSIGNMENT': 'Tarea',
+    'QUIZ_ASSIGNMENT': 'Tarea de cuestionario',
+    'SHORT_ANSWER_QUESTION': 'Pregunta',
+    'MULTIPLE_CHOICE_QUESTION': 'Pregunta de opción múltiple',
+    'MATERIAL': 'Material',
+    'REUSED_POST': 'Reutilizar publicación',
+    'TOPIC': 'Tema',
+    'ANNOUNCEMENT': 'Anuncio'
+  };
+  return names[workType] || workType;
 };
 
 /**

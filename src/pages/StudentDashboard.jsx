@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getStudentCourses, getAssignments, getGoogleAccessToken, getCourseWorkDetailed, getStudentSubmissions, getUserRoleInCourse, getCourseMaterials, getCourseTopics } from '../services/googleApi';
+import { getStudentCourses, getAssignments, getGoogleAccessToken, getAllCourseContent, getStudentSubmissions, getUserRoleInCourse, getCourseMaterials, getCourseTopics } from '../services/googleApi';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
 
 const StudentDashboard = ({ user }) => {
@@ -44,8 +44,8 @@ const StudentDashboard = ({ user }) => {
     try {
       console.log('Loading detailed coursework for course:', courseId);
       
-      // Get detailed coursework with enhanced information
-      const detailedCoursework = await getCourseWorkDetailed(courseId, accessToken);
+      // Get all course content with enhanced information
+      const detailedCoursework = await getAllCourseContent(courseId, accessToken);
       console.log('Detailed coursework loaded:', detailedCoursework.length);
       
       // For each coursework, try to get submission status
@@ -319,7 +319,7 @@ const StudentDashboard = ({ user }) => {
       {/* Assignments List */}
       <div className="card">
         <h4 className="text-lg font-medium text-gray-900 mb-4">
-          Mis Tareas
+          Contenido del Curso
         </h4>
 
         {assignments.length === 0 ? (

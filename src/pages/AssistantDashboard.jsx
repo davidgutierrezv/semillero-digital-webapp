@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTeacherCourses, getCourseStudents, getCourseWorkDetailed, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
+import { getTeacherCourses, getCourseStudents, getAllCourseContent, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
 import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import StudentProgressRow from '../components/StudentProgressRow';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
@@ -49,7 +49,7 @@ const AssistantDashboard = ({ user, role, roleInfo }) => {
       const [studentsData, cellsData, courseWorkData] = await Promise.all([
         getCourseStudents(courseId, accessToken),
         getCellsForCourse(courseId),
-        getCourseWorkDetailed(courseId, accessToken)
+        getAllCourseContent(courseId, accessToken)
       ]);
       
       setStudents(studentsData);
@@ -263,7 +263,7 @@ const AssistantDashboard = ({ user, role, roleInfo }) => {
       {selectedCourse && courseWork.length > 0 && (
         <div className="card">
           <h4 className="text-lg font-medium text-gray-900 mb-4">
-            Estado de las Tareas - {selectedCourse.name}
+            Contenido del Curso - {selectedCourse.name}
           </h4>
           
           <div className="space-y-4">

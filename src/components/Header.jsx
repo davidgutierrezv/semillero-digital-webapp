@@ -15,20 +15,32 @@ const Header = ({ user, userRole }) => {
 
   const getRoleDisplayName = (role) => {
     const roleNames = {
+      // Legacy roles
       student: 'Estudiante',
       assistant: 'Asistente',
       professor: 'Profesor',
-      coordinator: 'Coordinador'
+      coordinator: 'Coordinador',
+      // New roles
+      'STUDENT': 'Estudiante',
+      'ASSISTANT': 'Asistente',
+      'PROFESSOR': 'Profesor',
+      'COORDINATOR': 'Coordinador'
     };
     return roleNames[role] || 'Usuario';
   };
 
   const getRoleBadgeColor = (role) => {
     const colors = {
+      // Legacy roles
       student: 'bg-blue-100 text-blue-800',
       assistant: 'bg-green-100 text-green-800',
       professor: 'bg-purple-100 text-purple-800',
-      coordinator: 'bg-red-100 text-red-800'
+      coordinator: 'bg-red-100 text-red-800',
+      // New roles
+      'STUDENT': 'bg-blue-100 text-blue-800',
+      'ASSISTANT': 'bg-green-100 text-green-800',
+      'PROFESSOR': 'bg-purple-100 text-purple-800',
+      'COORDINATOR': 'bg-red-100 text-red-800'
     };
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
@@ -43,15 +55,17 @@ const Header = ({ user, userRole }) => {
           {/* User Info and Actions */}
           <div className="flex items-center space-x-4">
             {/* Role Badge */}
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(userRole)}`}>
-              {getRoleDisplayName(userRole)}
-            </span>
+            {userRole && (
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(userRole)}`}>
+                {getRoleDisplayName(userRole)}
+              </span>
+            )}
 
             {/* User Profile */}
             <div className="flex items-center space-x-3">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
-                  {user?.displayName || user?.email}
+                  {user?.displayName?.split(' ')[0] || user?.email?.split('@')[0]}
                 </p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>

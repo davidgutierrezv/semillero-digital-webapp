@@ -5,7 +5,7 @@ import ProfessorDashboard from '../pages/ProfessorDashboard';
 import AssistantDashboard from '../pages/AssistantDashboard';
 import RoleSelector from './RoleSelector';
 
-const RoleDetector = ({ user }) => {
+const RoleDetector = ({ user, onRoleSelected }) => {
   const [userRole, setUserRole] = useState(null);
   const [roleInfo, setRoleInfo] = useState(null);
   const [showRoleSelector, setShowRoleSelector] = useState(true);
@@ -32,6 +32,11 @@ const RoleDetector = ({ user }) => {
         setUserRole(savedRole);
         setRoleInfo(roleData);
         setShowRoleSelector(false);
+        
+        // Notify parent component about role selection
+        if (onRoleSelected) {
+          onRoleSelected(savedRole);
+        }
       } else {
         // Remove invalid saved role
         localStorage.removeItem('selectedRole');
@@ -65,12 +70,22 @@ const RoleDetector = ({ user }) => {
     setUserRole(selectedRole);
     setRoleInfo(roleData);
     setShowRoleSelector(false);
+    
+    // Notify parent component about role selection
+    if (onRoleSelected) {
+      onRoleSelected(selectedRole);
+    }
   };
 
   const handleChangeRole = () => {
     localStorage.removeItem('selectedRole');
     setShowRoleSelector(true);
     setManualRoleOverride(null);
+    
+    // Clear role selection in parent component
+    if (onRoleSelected) {
+      onRoleSelected(null);
+    }
   };
 
   const getCurrentRole = () => {

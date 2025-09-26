@@ -93,6 +93,13 @@ const AssignmentStatusCard = ({
           <div className="flex items-center space-x-2 mb-2">
             <span className="text-lg">{coursework.typeIcon || '📄'}</span>
             <h4 className="font-medium text-gray-900">{coursework.title}</h4>
+            
+            {/* Type Badge */}
+            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${coursework.typeColor}`}>
+              {coursework.typeName || coursework.workType}
+            </span>
+            
+            {/* Status Badge for Students */}
             {coursework.submissionStatus && (
               <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(coursework.submissionStatus)}`}>
                 {getStatusIcon(coursework.submissionStatus)} {coursework.submissionStatus}
@@ -149,8 +156,10 @@ const AssignmentStatusCard = ({
           <div className="flex items-center space-x-2 mb-3">
             <span className="text-lg">{coursework.typeIcon || '📄'}</span>
             <h4 className="font-medium text-gray-900">{coursework.title}</h4>
+            
+            {/* Type Badge */}
             <span className={`px-2 py-1 text-xs font-medium rounded-full border ${coursework.typeColor}`}>
-              {coursework.workType}
+              {coursework.typeName || coursework.workType}
             </span>
           </div>
           
