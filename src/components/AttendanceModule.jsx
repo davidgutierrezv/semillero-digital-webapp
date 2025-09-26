@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { saveAttendanceRecord as saveToFirestore, getAttendanceRecords } from '../services/firestore';
 import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentUtils';
 
-const AttendanceModule = ({ courseId, courseName, students, user }) => {
+const AttendanceModule = ({ courseId, courseName, students, user, filteredStudents = null, isCoordinatorView = false, cellName = null }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState({});
   const [loading, setLoading] = useState(false);
@@ -16,24 +16,22 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
   useEffect(() => {
     loadAttendanceHistory();
     initializeAttendance();
-  }, [courseId, students]);
+  }, [courseId, students, filteredStudents]);
 
-  useEffect(() => {
-    loadAttendanceForDate();
-  }, [selectedDate]);
+  // Determinar qué estudiantes usar
+  const studentsToUse = isCoordinatorView && filteredStudents ? filteredStudents : students;
 
   const initializeAttendance = () => {
-    // Inicializar asistencia para todos los estudiantes
+    // Inicializar asistencia para los estudiantes correspondientes
     const initialAttendance = {};
-    students.forEach(student => {
+    studentsToUse.forEach(student => {
       const email = getStudentEmail(student);
       if (email) {
-        initialAttendance[email] = 'presente'; // Por defecto presente
+        initialAttendance[email] = false; // Por defecto ausente
       }
     });
     setAttendance(initialAttendance);
   };
-
   const loadAttendanceForDate = async () => {
     try {
       setLoading(true);
@@ -49,7 +47,7 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
       const attendanceMap = {};
       
       // Inicializar todos los estudiantes como presentes
-      students.forEach(student => {
+      studentsToUse.forEach(student => {
         const email = getStudentEmail(student);
         if (email) {
           attendanceMap[email] = 'presente';
@@ -199,10 +197,16 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            Registro de Asistencia - {courseName}
+            {isCoordinatorView 
+              ? `Asistencia de ${cellName} - ${courseName}`
+              : `Registro de Asistencia - ${courseName}`
+            }
           </h3>
           <p className="text-sm text-gray-600">
-            Registra la asistencia de todos los estudiantes para una fecha específica
+            {isCoordinatorView 
+              ? `Registra la asistencia de los ${studentsToUse.length} estudiantes de tu célula`
+              : 'Registra la asistencia de todos los estudiantes para una fecha específica'
+            }
           </p>
         </div>
         
@@ -322,7 +326,7 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
           {/* Student List */}
           <div className="p-6">
             <h4 className="text-lg font-medium text-gray-900 mb-4">
-              Lista de Estudiantes ({students.length})
+              Lista de Estudiantes ({studentsToUse.length})
             </h4>
             
             {loading ? (
@@ -330,14 +334,17 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mr-2"></div>
                 <span className="text-gray-600">Cargando estudiantes...</span>
               </div>
-            ) : students.length === 0 ? (
+            ) : studentsToUse.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <div className="text-4xl mb-4">👥</div>
-                <p>No hay estudiantes registrados en este curso</p>
+                <p>{isCoordinatorView 
+                  ? 'No hay estudiantes asignados a tu célula' 
+                  : 'No hay estudiantes registrados en este curso'
+                }</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {students.map((student) => {
+                {studentsToUse.map((student) => {
                   const email = getStudentEmail(student);
                   const name = getStudentName(student);
                   const currentStatus = attendance[email] || 'presente';

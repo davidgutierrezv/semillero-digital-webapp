@@ -160,6 +160,27 @@ export const getCellsForAssistant = async (assistantEmail) => {
 };
 
 /**
+ * Get cells where a specific user is assigned as assistant (from main cells collection)
+ * @param {string} assistantEmail - The assistant's email
+ * @returns {Promise<Array>} Array of cells where user is assistant
+ */
+export const getCellsByAssistant = async (assistantEmail) => {
+  try {
+    const cellsRef = collection(db, 'cells');
+    const q = query(cellsRef, where('assistantEmail', '==', assistantEmail));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting cells by assistant:', error);
+    throw error;
+  }
+};
+
+/**
  * Save attendance record for a class
  * @param {string} courseId - The course ID
  * @param {string} recordId - The record ID

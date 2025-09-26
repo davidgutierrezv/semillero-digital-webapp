@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { detectUserRole, getGoogleAccessToken } from '../services/googleApi';
 import StudentDashboard from '../pages/StudentDashboard';
 import ProfessorDashboard from '../pages/ProfessorDashboard';
-import AssistantDashboard from '../pages/AssistantDashboard';
+import CoordinatorDashboard from '../pages/CoordinatorDashboard';
 import RoleSelector from './RoleSelector';
 
 const RoleDetector = ({ user, onRoleSelected }) => {
@@ -136,7 +136,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
               <div>
                 <span className="text-sm font-medium text-gray-700">
                   {currentRole === 'PROFESSOR' && 'Vista de Profesor'}
-                  {currentRole === 'ASSISTANT' && 'Vista de Asistente'}
+                  {currentRole === 'ASSISTANT' && 'Vista de Coordinador'}
                   {currentRole === 'STUDENT' && 'Vista de Estudiante'}
                 </span>
                 <div className="text-xs text-gray-500">
@@ -167,7 +167,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
       )}
       
       {currentRole === 'ASSISTANT' && (
-        <AssistantDashboard user={user} role={currentRole} roleInfo={roleInfo} />
+        <CoordinatorDashboard user={user} role={currentRole} roleInfo={roleInfo} />
       )}
       
       {(currentRole === 'STUDENT' || currentRole === 'VIEWER') && (

@@ -51,8 +51,8 @@ const RoleSelector = ({ user, onRoleSelected }) => {
         // If user is teacher, they can also be assistant
         roles.push({
           id: 'ASSISTANT',
-          name: 'Asistente',
-          description: 'Vista especializada para asistentes de cátedra',
+          name: 'Coordinador',
+          description: 'Vista especializada para coordinadores de cátedra',
           icon: '👥',
           color: 'bg-purple-50 border-purple-200 text-purple-800',
           hoverColor: 'hover:bg-purple-100'

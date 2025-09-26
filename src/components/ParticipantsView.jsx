@@ -7,7 +7,7 @@ import PhoneModal from './PhoneModal';
 import TelegramMessageModal from './TelegramMessageModal';
 import TelegramChatIdHelper from './TelegramChatIdHelper';
 
-const ParticipantsView = ({ courseId, courseName }) => {
+const ParticipantsView = ({ courseId, courseName, filteredStudents = null, isCoordinatorView = false, cellName = null }) => {
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,19 +45,36 @@ const ParticipantsView = ({ courseId, courseName }) => {
     }
   }, [courseId]);
 
+  // Recargar cuando cambien los estudiantes filtrados (vista coordinador)
+  useEffect(() => {
+    if (isCoordinatorView && filteredStudents) {
+      setStudents(filteredStudents);
+      loadStudentsData();
+      loadTelegramRegistrations();
+    }
+  }, [filteredStudents, isCoordinatorView]);
+
   const loadParticipants = async () => {
     try {
       setLoading(true);
       setError(null);
-      const accessToken = getGoogleAccessToken();
 
-      const [teachersData, studentsData] = await Promise.all([
-        getCourseTeachers(courseId, accessToken),
-        getCourseStudents(courseId, accessToken)
-      ]);
+      if (isCoordinatorView && filteredStudents) {
+        // En vista de coordinador, usar estudiantes filtrados
+        setStudents(filteredStudents);
+        setTeachers([]); // Los coordinadores no ven profesores
+      } else {
+        // Vista normal de profesor
+        const accessToken = getGoogleAccessToken();
 
-      setTeachers(teachersData);
-      setStudents(studentsData);
+        const [teachersData, studentsData] = await Promise.all([
+          getCourseTeachers(courseId, accessToken),
+          getCourseStudents(courseId, accessToken)
+        ]);
+
+        setTeachers(teachersData);
+        setStudents(studentsData);
+      }
     } catch (error) {
       console.error('Error loading participants:', error);
       setError('Error al cargar los participantes del curso');
@@ -459,8 +476,8 @@ const ParticipantsView = ({ courseId, courseName }) => {
     );
   }
 
-  const filteredStudents = filterParticipants(students);
-  const filteredTeachers = filterParticipants(teachers);
+  const displayedStudents = filterParticipants(students);
+  const displayedTeachers = filterParticipants(teachers);
 
   return (
     <div className="space-y-6">
@@ -468,10 +485,16 @@ const ParticipantsView = ({ courseId, courseName }) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            Participantes - {courseName}
+            {isCoordinatorView 
+              ? `Estudiantes de ${cellName} - ${courseName}`
+              : `Participantes - ${courseName}`
+            }
           </h3>
           <p className="text-sm text-gray-600">
-            {teachers.length} profesores • {students.length} estudiantes
+            {isCoordinatorView 
+              ? `${students.length} estudiantes de tu célula`
+              : `${teachers.length} profesores • ${students.length} estudiantes`
+            }
           </p>
         </div>
         
@@ -511,36 +534,38 @@ const ParticipantsView = ({ courseId, courseName }) => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('students')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'students'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Estudiantes ({filteredStudents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('teachers')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'teachers'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Profesores ({filteredTeachers.length})
-          </button>
-        </nav>
-      </div>
+      {!isCoordinatorView && (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('students')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'students'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Estudiantes ({displayedStudents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('teachers')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'teachers'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Profesores ({displayedTeachers.length})
+            </button>
+          </nav>
+        </div>
+      )}
 
       {/* Content */}
       <div className="space-y-4">
         {activeTab === 'students' && (
           <>
-            {filteredStudents.length === 0 ? (
+            {displayedStudents.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <div className="text-4xl mb-4">👥</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -549,13 +574,15 @@ const ParticipantsView = ({ courseId, courseName }) => {
                 <p className="text-gray-600">
                   {searchTerm 
                     ? 'Intenta con otros términos de búsqueda'
+                    : isCoordinatorView
+                    ? 'Tu célula aún no tiene estudiantes asignados'
                     : 'Este curso aún no tiene estudiantes inscritos'
                   }
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredStudents.map((student) => (
+                {displayedStudents.map((student) => (
                   <ParticipantCard
                     key={student.userId}
                     participant={student}
@@ -569,7 +596,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
 
         {activeTab === 'teachers' && (
           <>
-            {filteredTeachers.length === 0 ? (
+            {displayedTeachers.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <div className="text-4xl mb-4">👨‍🏫</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -584,7 +611,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredTeachers.map((teacher) => (
+                {displayedTeachers.map((teacher) => (
                   <ParticipantCard
                     key={teacher.userId}
                     participant={teacher}
@@ -617,7 +644,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
           </div>
           <div>
             <div className="text-2xl font-bold text-orange-600">
-              {searchTerm ? filteredStudents.length + filteredTeachers.length : students.length + teachers.length}
+              {searchTerm ? displayedStudents.length + displayedTeachers.length : students.length + teachers.length}
             </div>
             <div className="text-sm text-gray-600">
               {searchTerm ? 'Resultados Filtrados' : 'Participantes Activos'}
