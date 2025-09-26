@@ -31,8 +31,10 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
       newErrors.name = 'El nombre de la célula es requerido';
     }
 
+    console.log('Validating studentEmails:', formData.studentEmails);
     if (formData.studentEmails.length === 0) {
       newErrors.students = 'Debe asignar al menos un estudiante';
+      console.log('Validation error: No students selected');
     }
 
     if (formData.assistantEmail && !formData.assistantName.trim()) {
@@ -46,10 +48,18 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    const isValid = validateForm();
+    console.log('Form validation result:', isValid);
+    console.log('Validation errors:', errors);
+    if (!isValid) return;
 
     setSaving(true);
     try {
+      console.log('=== DEBUGGING SUBMIT ===');
+      console.log('formData.studentEmails:', formData.studentEmails);
+      console.log('formData.studentEmails.length:', formData.studentEmails.length);
+      console.log('Full formData:', formData);
+      
       // Only send the fields we need
       const dataToSave = {
         name: formData.name,
@@ -58,6 +68,11 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
         assistantName: formData.assistantName,
         studentEmails: formData.studentEmails
       };
+      
+      console.log('FormData before save:', formData);
+      console.log('DataToSave:', dataToSave);
+      console.log('DataToSave.studentEmails:', dataToSave.studentEmails);
+      
       await onSave(dataToSave);
     } catch (error) {
       console.error('Error saving cell:', error);
@@ -67,17 +82,26 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
   };
 
   const handleStudentToggle = (studentEmail) => {
-    setFormData(prev => ({
-      ...prev,
-      studentEmails: prev.studentEmails.includes(studentEmail)
+    console.log('Toggling student:', studentEmail);
+    console.log('Current studentEmails:', formData.studentEmails);
+    
+    setFormData(prev => {
+      const newEmails = prev.studentEmails.includes(studentEmail)
         ? prev.studentEmails.filter(email => email !== studentEmail)
-        : [...prev.studentEmails, studentEmail]
-    }));
+        : [...prev.studentEmails, studentEmail];
+      
+      console.log('New studentEmails:', newEmails);
+      
+      return {
+        ...prev,
+        studentEmails: newEmails
+      };
+    });
   };
 
   const handleSelectAllUnassigned = () => {
     const unassignedEmails = unassignedStudents.map(s => 
-      s.profile?.emailAddress || s.emailAddress
+      s.profile?.emailAddress || s.userId
     );
     setFormData(prev => ({
       ...prev,
@@ -98,12 +122,12 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
       // When editing, include current cell students + unassigned
       const currentCellEmails = cell.studentEmails || [];
       const unassignedEmails = unassignedStudents.map(s => 
-        s.profile?.emailAddress || s.emailAddress
+        s.profile?.emailAddress || s.userId
       );
       const availableEmails = [...new Set([...currentCellEmails, ...unassignedEmails])];
       
       return students.filter(student => 
-        availableEmails.includes(student.profile?.emailAddress || student.emailAddress)
+        availableEmails.includes(student.profile?.emailAddress || student.userId)
       );
     } else {
       // When creating, only show unassigned students
@@ -271,11 +295,13 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
               ) : (
                 <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                   {availableStudents.map((student) => {
-                    const studentEmail = student.profile?.emailAddress || student.emailAddress;
-                    const studentName = student.profile?.name?.fullName || studentEmail;
+                    console.log('Student object:', student);
+                    const studentEmail = student.profile?.emailAddress || student.userId;
+                    console.log('Extracted studentEmail:', studentEmail);
+                    const studentName = student.profile?.name?.fullName || student.profile?.emailAddress || studentEmail;
                     const isSelected = formData.studentEmails.includes(studentEmail);
                     const isUnassigned = unassignedStudents.some(s => 
-                      (s.profile?.emailAddress || s.emailAddress) === studentEmail
+                      (s.profile?.emailAddress || s.userId) === studentEmail
                     );
 
                     return (
@@ -288,7 +314,13 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleStudentToggle(studentEmail)}
+                          onChange={() => {
+                            if (studentEmail) {
+                              handleStudentToggle(studentEmail);
+                            } else {
+                              console.error('Cannot toggle student: email is undefined');
+                            }
+                          }}
                           className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                         />
                         

@@ -4,6 +4,7 @@ import CellCard from './CellCard';
 import CellForm from './CellForm';
 
 const CellManagement = ({ courseId, courseName, students, accessToken, currentUser }) => {
+  console.log('CellManagement - Students received:', students);
   const [cells, setCells] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
