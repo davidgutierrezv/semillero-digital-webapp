@@ -4,6 +4,7 @@ import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import AttendanceModule from '../components/AttendanceModule';
 import StudentProgressRow from '../components/StudentProgressRow';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
+import CellManagement from '../components/CellManagement';
 
 const ProfessorDashboard = ({ user, role }) => {
   const [courses, setCourses] = useState([]);
@@ -14,6 +15,7 @@ const ProfessorDashboard = ({ user, role }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance'
   const [showAttendance, setShowAttendance] = useState(false);
 
   useEffect(() => {
@@ -272,20 +274,63 @@ const ProfessorDashboard = ({ user, role }) => {
         />
       )}
 
-      {/* Course Overview */}
+      {/* Course Tabs */}
       {selectedCourse && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="card">
-            <h4 className="font-medium text-gray-900 mb-2">Estudiantes</h4>
-            <p className="text-2xl font-bold text-primary-600">{students.length}</p>
-          </div>
-          <div className="card">
-            <h4 className="font-medium text-gray-900 mb-2">Células</h4>
-            <p className="text-2xl font-bold text-primary-600">{cells.length}</p>
-          </div>
-          <div className="card">
-            <h4 className="font-medium text-gray-900 mb-2">Tareas</h4>
-            <p className="text-2xl font-bold text-primary-600">{courseWork.length}</p>
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'overview'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 Resumen
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('cells')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'cells'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🧬 Células ({cells.length})
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('attendance')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'attendance'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📅 Asistencia
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* Tab Content - Overview */}
+      {selectedCourse && activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Course Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card">
+              <h4 className="font-medium text-gray-900 mb-2">Estudiantes</h4>
+              <p className="text-2xl font-bold text-primary-600">{students.length}</p>
+            </div>
+            <div className="card">
+              <h4 className="font-medium text-gray-900 mb-2">Células</h4>
+              <p className="text-2xl font-bold text-primary-600">{cells.length}</p>
+            </div>
+            <div className="card">
+              <h4 className="font-medium text-gray-900 mb-2">Tareas</h4>
+              <p className="text-2xl font-bold text-primary-600">{courseWork.length}</p>
+            </div>
           </div>
         </div>
       )}
@@ -339,35 +384,55 @@ const ProfessorDashboard = ({ user, role }) => {
               ))}
             </div>
           )}
+
+          {/* Course Assignments with Status */}
+          {courseWork.length > 0 && (
+            <div className="card">
+              <h4 className="text-lg font-medium text-gray-900 mb-4">
+                Contenido del Curso
+              </h4>
+              
+              <div className="space-y-4">
+                {courseWork.map((assignment) => (
+                  <AssignmentStatusCard
+                    key={assignment.id}
+                    coursework={assignment}
+                    students={students}
+                    courseId={selectedCourse.id}
+                    accessToken={getGoogleAccessToken()}
+                    userRole={role}
+                    onViewDetails={(coursework) => {
+                      // Open coursework in Google Classroom
+                      if (coursework.alternateLink) {
+                        window.open(coursework.alternateLink, '_blank');
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Course Assignments with Status */}
-      {selectedCourse && courseWork.length > 0 && (
-        <div className="card">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">
-            Contenido del Curso
-          </h4>
-          
-          <div className="space-y-4">
-            {courseWork.map((assignment) => (
-              <AssignmentStatusCard
-                key={assignment.id}
-                coursework={assignment}
-                students={students}
-                courseId={selectedCourse.id}
-                accessToken={getGoogleAccessToken()}
-                userRole={role}
-                onViewDetails={(coursework) => {
-                  // Open coursework in Google Classroom
-                  if (coursework.alternateLink) {
-                    window.open(coursework.alternateLink, '_blank');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
+      {/* Tab Content - Cells */}
+      {selectedCourse && activeTab === 'cells' && (
+        <CellManagement
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
+          students={students}
+          accessToken={getGoogleAccessToken()}
+        />
+      )}
+
+      {/* Tab Content - Attendance */}
+      {selectedCourse && activeTab === 'attendance' && (
+        <AttendanceModule 
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
+          students={students}
+          user={user}
+        />
       )}
     </div>
   );

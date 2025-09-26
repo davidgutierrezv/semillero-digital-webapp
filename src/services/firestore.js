@@ -3,17 +3,18 @@ import {
   getDoc, 
   setDoc, 
   collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
   query, 
   where, 
-  orderBy,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from './firebase';
 
 /**
+{{ ... }}
  * Get user role and information from Firestore
  * @param {string} userId - The user's UID from Firebase Auth
  * @returns {Promise<Object|null>} - User document data or null if not found
@@ -47,15 +48,20 @@ export const createOrUpdateUser = async (userId, userData) => {
 };
 
 /**
- * Get all cells for a specific course
- * @param {string} courseId - The course ID
- * @returns {Promise<Array>} - Array of cell documents
+ * Get cells for a specific course
+ * @param {string} courseId - Course ID
+ * @returns {Promise<Array>} Array of cell objects
  */
 export const getCellsForCourse = async (courseId) => {
   try {
-    const cellsRef = collection(db, 'courses', courseId, 'cells');
-    const snapshot = await getDocs(cellsRef);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const cellsRef = collection(db, 'cells');
+    const q = query(cellsRef, where('courseId', '==', courseId));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
   } catch (error) {
     console.error('Error getting cells for course:', error);
     throw error;
@@ -63,24 +69,59 @@ export const getCellsForCourse = async (courseId) => {
 };
 
 /**
- * Create a new cell for a course
- * @param {string} courseId - The course ID
- * @param {Object} cellData - Cell data (name, assistantEmail, studentEmails)
- * @returns {Promise<string>} - The ID of the created cell
+ * Create a new cell
+ * @param {Object} cellData - Cell data
+ * @returns {Promise<Object>} Created cell with ID
  */
-export const createCell = async (courseId, cellData) => {
+export const createCell = async (cellData) => {
   try {
-    const cellsRef = collection(db, 'courses', courseId, 'cells');
-    const docRef = await addDoc(cellsRef, {
-      ...cellData,
-      createdAt: serverTimestamp()
-    });
-    return docRef.id;
+    const cellsRef = collection(db, 'cells');
+    const docRef = await addDoc(cellsRef, cellData);
+    
+    return {
+      id: docRef.id,
+      ...cellData
+    };
   } catch (error) {
     console.error('Error creating cell:', error);
     throw error;
   }
 };
+
+/**
+ * Update an existing cell
+ * @param {string} cellId - Cell ID
+ * @param {Object} updateData - Data to update
+ * @returns {Promise<Object>} Updated data
+ */
+export const updateCell = async (cellId, updateData) => {
+  try {
+    const cellRef = doc(db, 'cells', cellId);
+    await updateDoc(cellRef, updateData);
+    
+    return updateData;
+  } catch (error) {
+    console.error('Error updating cell:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a cell
+ * @param {string} cellId - Cell ID
+ * @returns {Promise<void>}
+ */
+export const deleteCell = async (cellId) => {
+  try {
+    const cellRef = doc(db, 'cells', cellId);
+    await deleteDoc(cellRef);
+  } catch (error) {
+    console.error('Error deleting cell:', error);
+    throw error;
+  }
+};
+
+
 
 /**
  * Get cells where a specific assistant is assigned
