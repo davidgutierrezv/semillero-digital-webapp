@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getCourseTeachers, getCourseStudents, getGoogleAccessToken } from '../services/googleApi';
 import { getStudentEmail, getStudentName } from '../utils/studentUtils';
+import { getAllStudentsData } from '../services/firestore';
+import { validateTelegramConfig, sendMessageToGroup, formatStudentMessage } from '../services/telegramApi';
+import StudentPhoneModal from './StudentPhoneModal';
 
 const ParticipantsView = ({ courseId, courseName }) => {
   const [teachers, setTeachers] = useState([]);
@@ -9,11 +12,18 @@ const ParticipantsView = ({ courseId, courseName }) => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('students'); // 'students' or 'teachers'
   const [searchTerm, setSearchTerm] = useState('');
+  const [studentsData, setStudentsData] = useState({}); // Datos adicionales de estudiantes (teléfonos, etc.)
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [telegramConfig, setTelegramConfig] = useState({ ready: false });
 
   useEffect(() => {
     if (courseId) {
       loadParticipants();
+      loadStudentsData();
     }
+    // Validar configuración de Telegram
+    setTelegramConfig(validateTelegramConfig());
   }, [courseId]);
 
   const loadParticipants = async () => {
@@ -34,6 +44,45 @@ const ParticipantsView = ({ courseId, courseName }) => {
       setError('Error al cargar los participantes del curso');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStudentsData = async () => {
+    try {
+      const allStudentsData = await getAllStudentsData(courseId);
+      const studentsDataMap = {};
+      
+      allStudentsData.forEach(studentData => {
+        studentsDataMap[studentData.email] = studentData;
+      });
+      
+      setStudentsData(studentsDataMap);
+    } catch (error) {
+      console.error('Error loading students data:', error);
+    }
+  };
+
+  const handleEditPhone = (student) => {
+    const studentData = {
+      name: getParticipantName(student),
+      email: getParticipantEmail(student),
+      userId: student.userId,
+      profileId: student.profile?.id
+    };
+    setSelectedStudent(studentData);
+    setShowPhoneModal(true);
+  };
+
+  const handlePhoneSaved = (phoneNumber) => {
+    // Actualizar los datos locales
+    if (selectedStudent) {
+      setStudentsData(prev => ({
+        ...prev,
+        [selectedStudent.email]: {
+          ...prev[selectedStudent.email],
+          phoneNumber
+        }
+      }));
     }
   };
 
@@ -66,6 +115,8 @@ const ParticipantsView = ({ courseId, courseName }) => {
     const name = getParticipantName(participant);
     const email = getParticipantEmail(participant);
     const photoUrl = participant.profile?.photoUrl;
+    const studentData = studentsData[email];
+    const hasPhone = studentData?.phoneNumber;
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
@@ -100,10 +151,20 @@ const ParticipantsView = ({ courseId, courseName }) => {
               }`}>
                 {role === 'teacher' ? 'Profesor' : 'Estudiante'}
               </span>
+              {hasPhone && (
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                  📱
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-600 truncate">
               {email}
             </p>
+            {hasPhone && (
+              <p className="text-xs text-gray-500 truncate">
+                📱 {studentData.phoneNumber}
+              </p>
+            )}
             {participant.profile?.id && participant.profile.id !== email && (
               <p className="text-xs text-gray-500 truncate">
                 ID: {participant.profile.id}
@@ -112,7 +173,8 @@ const ParticipantsView = ({ courseId, courseName }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center space-x-1">
+            {/* Email Button */}
             <button
               onClick={() => window.open(`mailto:${email}`, '_blank')}
               className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
@@ -123,6 +185,36 @@ const ParticipantsView = ({ courseId, courseName }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </button>
+
+            {/* Phone Button - Solo para estudiantes */}
+            {role === 'student' && (
+              <button
+                onClick={() => handleEditPhone(participant)}
+                className={`p-2 transition-colors ${
+                  hasPhone 
+                    ? 'text-green-500 hover:text-green-600' 
+                    : 'text-gray-400 hover:text-blue-600'
+                }`}
+                title={hasPhone ? 'Editar teléfono' : 'Agregar teléfono'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </button>
+            )}
+
+            {/* Telegram Button - Solo si tiene teléfono y Telegram está configurado */}
+            {role === 'student' && hasPhone && telegramConfig.ready && (
+              <button
+                onClick={() => {/* TODO: Implementar envío de mensaje */}}
+                className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                title="Enviar mensaje por Telegram"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -288,8 +380,10 @@ const ParticipantsView = ({ courseId, courseName }) => {
             <div className="text-sm text-gray-600">Total Profesores</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-purple-600">{students.length + teachers.length}</div>
-            <div className="text-sm text-gray-600">Total Participantes</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {Object.keys(studentsData).filter(email => studentsData[email].phoneNumber).length}
+            </div>
+            <div className="text-sm text-gray-600">Con Teléfono</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-orange-600">
@@ -301,6 +395,35 @@ const ParticipantsView = ({ courseId, courseName }) => {
           </div>
         </div>
       </div>
+
+      {/* Telegram Configuration Status */}
+      {!telegramConfig.ready && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-yellow-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <p className="text-yellow-800 font-medium">Telegram no configurado</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Para habilitar el envío de mensajes por Telegram, configura la variable de entorno VITE_TELEGRAM_BOT_TOKEN o REACT_APP_TELEGRAM_BOT_TOKEN
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Modal */}
+      <StudentPhoneModal
+        isOpen={showPhoneModal}
+        onClose={() => {
+          setShowPhoneModal(false);
+          setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+        courseId={courseId}
+        onSave={handlePhoneSaved}
+      />
     </div>
   );
 };
