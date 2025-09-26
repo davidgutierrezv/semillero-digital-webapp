@@ -32,6 +32,7 @@ provider.addScope('https://www.googleapis.com/auth/classroom.rosters.readonly');
 provider.addScope('https://www.googleapis.com/auth/classroom.coursework.students.readonly');
 provider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
 provider.addScope('https://www.googleapis.com/auth/classroom.student-submissions.students.readonly');
+provider.addScope('https://www.googleapis.com/auth/classroom.profile.emails');
 provider.addScope('https://www.googleapis.com/auth/calendar');
 provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 provider.addScope('https://www.googleapis.com/auth/userinfo.email');
