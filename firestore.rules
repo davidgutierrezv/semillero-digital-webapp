@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can read/write their own document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow coordinators and professors to read user documents
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coordinator', 'professor'];
+    }
+    
+    // Courses collection
+    match /courses/{courseId} {
+      // Allow authenticated users to read courses
+      allow read: if request.auth != null;
+      // Allow professors and coordinators to write
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coordinator', 'professor'];
+      
+      // Cells subcollection
+      match /cells/{cellId} {
+        // Allow authenticated users to read cells
+        allow read: if request.auth != null;
+        // Allow professors and coordinators to write
+        allow write: if request.auth != null && 
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coordinator', 'professor'];
+        // Allow assistants to read cells where they are assigned
+        allow read: if request.auth != null && 
+          request.auth.token.email == resource.data.assistantEmail;
+      }
+      
+      // Attendance subcollection
+      match /attendance/{attendanceId} {
+        // Allow authenticated users to read attendance
+        allow read: if request.auth != null;
+        // Allow professors and coordinators to write
+        allow write: if request.auth != null && 
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coordinator', 'professor'];
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
