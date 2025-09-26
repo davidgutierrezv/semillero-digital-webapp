@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentUtils';
 
 const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, currentUser }) => {
   const [formData, setFormData] = useState({
@@ -100,9 +101,7 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
   };
 
   const handleSelectAllUnassigned = () => {
-    const unassignedEmails = unassignedStudents.map(s => 
-      s.profile?.emailAddress || s.userId
-    );
+    const unassignedEmails = unassignedStudents.map(getStudentEmail).filter(Boolean);
     setFormData(prev => ({
       ...prev,
       studentEmails: [...new Set([...prev.studentEmails, ...unassignedEmails])]
@@ -121,14 +120,13 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
     if (cell) {
       // When editing, include current cell students + unassigned
       const currentCellEmails = cell.studentEmails || [];
-      const unassignedEmails = unassignedStudents.map(s => 
-        s.profile?.emailAddress || s.userId
-      );
+      const unassignedEmails = unassignedStudents.map(getStudentEmail).filter(Boolean);
       const availableEmails = [...new Set([...currentCellEmails, ...unassignedEmails])];
       
-      return students.filter(student => 
-        availableEmails.includes(student.profile?.emailAddress || student.userId)
-      );
+      return students.filter(student => {
+        const email = getStudentEmail(student);
+        return email && availableEmails.includes(email);
+      });
     } else {
       // When creating, only show unassigned students
       return unassignedStudents;
@@ -295,13 +293,32 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
               ) : (
                 <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                   {availableStudents.map((student) => {
+                    console.log('=== DEBUGGING STUDENT IN CELLFORM ===');
                     console.log('Student object:', student);
-                    const studentEmail = student.profile?.emailAddress || student.userId;
-                    console.log('Extracted studentEmail:', studentEmail);
-                    const studentName = student.profile?.name?.fullName || student.profile?.emailAddress || studentEmail;
+                    console.log('Student keys:', Object.keys(student));
+                    if (student.profile) {
+                      console.log('Profile keys:', Object.keys(student.profile));
+                    }
+                    
+                    const studentEmail = getStudentEmail(student);
+                    const studentName = getStudentName(student);
+                    console.log('Final extracted studentEmail:', studentEmail);
+                    console.log('Final extracted studentName:', studentName);
+                    console.log('Available email fields:', {
+                      profileEmail: student.profile?.emailAddress,
+                      directEmail: student.emailAddress,
+                      profileId: student.profile?.id,
+                      userId: student.userId
+                    });
+                    
+                    if (!studentEmail) {
+                      console.warn('No email found for student:', student);
+                      return null;
+                    }
+                    
                     const isSelected = formData.studentEmails.includes(studentEmail);
                     const isUnassigned = unassignedStudents.some(s => 
-                      (s.profile?.emailAddress || s.userId) === studentEmail
+                      getStudentEmail(s) === studentEmail
                     );
 
                     return (

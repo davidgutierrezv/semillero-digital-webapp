@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCalendarEvents } from '../services/googleApi';
-import { saveAttendanceRecord, getAttendanceRecords } from '../services/firestore';
+import { saveAttendanceRecord as saveToFirestore, getAttendanceRecords } from '../services/firestore';
+import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentUtils';
 
 const AttendanceModule = ({ courseId, courseName, students, user }) => {
   const [events, setEvents] = useState([]);
@@ -72,8 +73,10 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
     // Initialize attendance state for all students
     const initialAttendance = {};
     students.forEach(student => {
-      const email = student.profile?.emailAddress || student.userId;
-      initialAttendance[email] = 'presente'; // Default to present
+      const email = getStudentEmail(student);
+      if (email) {
+        initialAttendance[email] = 'presente'; // Default to present
+      }
     });
     setAttendance(initialAttendance);
 
@@ -246,8 +249,10 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
           <div className="space-y-3">
             <h6 className="font-medium text-gray-900">Lista de Estudiantes</h6>
             {students.map((student) => {
-              const email = student.profile?.emailAddress || student.userId;
-              const name = student.profile?.name?.fullName || email;
+              const email = getStudentEmail(student);
+              const name = getStudentName(student);
+              
+              if (!email) return null;
               
               return (
                 <div key={email} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

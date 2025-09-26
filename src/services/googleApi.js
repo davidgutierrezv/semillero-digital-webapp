@@ -64,7 +64,8 @@ export const getCourses = async (accessToken) => {
  * @returns {Promise<Array>} - Array of student objects
  */
 export const getCourseStudents = async (courseId, accessToken) => {
-  const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/students`;
+  // Include profile fields to get email addresses
+  const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/students?fields=students(courseId,userId,profile(id,name,emailAddress,photoUrl))`;
   const data = await fetchGoogleApi(url, accessToken);
   return data.students || [];
 };

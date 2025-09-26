@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCellsForCourse, createCell, updateCell, deleteCell } from '../services/firestore';
+import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentUtils';
 import CellCard from './CellCard';
 import CellForm from './CellForm';
 
@@ -113,9 +114,10 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
   // Get students not assigned to any cell
   const getUnassignedStudents = () => {
     const assignedEmails = cells.flatMap(cell => cell.studentEmails || []);
-    return students.filter(student => 
-      !assignedEmails.includes(student.profile?.emailAddress || student.emailAddress)
-    );
+    return students.filter(student => {
+      const studentEmail = getStudentEmail(student);
+      return studentEmail && !assignedEmails.includes(studentEmail);
+    });
   };
 
   if (loading) {
@@ -249,10 +251,10 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
               <div className="mt-2 flex flex-wrap gap-2">
                 {getUnassignedStudents().slice(0, 5).map((student) => (
                   <span 
-                    key={student.profile?.emailAddress || student.emailAddress}
+                    key={getStudentId(student)}
                     className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs"
                   >
-                    {student.profile?.name?.fullName || student.profile?.emailAddress || student.emailAddress}
+                    {getStudentName(student)}
                   </span>
                 ))}
                 {getUnassignedStudents().length > 5 && (
