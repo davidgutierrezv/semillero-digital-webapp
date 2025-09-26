@@ -7,6 +7,7 @@ import AssignmentStatusCard from '../components/AssignmentStatusCard';
 import CellManagement from '../components/CellManagement';
 import ParticipantsView from '../components/ParticipantsView';
 import ProgressView from '../components/ProgressView';
+import AnalyticsView from '../components/AnalyticsView';
 
 const ProfessorDashboard = ({ user, role }) => {
   const [courses, setCourses] = useState([]);
@@ -18,7 +19,7 @@ const ProfessorDashboard = ({ user, role }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants', 'progress'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants', 'progress', 'analytics'
 
   useEffect(() => {
     loadCourses();
@@ -327,6 +328,17 @@ const ProfessorDashboard = ({ user, role }) => {
             >
               📊 Progreso ({courseWork.length})
             </button>
+            
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'analytics'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📈 Analíticas
+            </button>
           </nav>
         </div>
       )}
@@ -499,6 +511,19 @@ const ProfessorDashboard = ({ user, role }) => {
           courseWork={courseWork}
           user={user}
           role={role}
+        />
+      )}
+
+      {/* Tab Content - Analytics */}
+      {selectedCourse && activeTab === 'analytics' && (
+        <AnalyticsView
+          role="professor"
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
+          students={students}
+          courseWork={courseWork}
+          cells={cells}
+          user={user}
         />
       )}
     </div>

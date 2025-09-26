@@ -5,6 +5,7 @@ import { getStudentEmail, getStudentName, getStudentId, filterStudentsByEmails }
 import CellCard from '../components/CellCard';
 import ParticipantsView from '../components/ParticipantsView';
 import AttendanceModule from '../components/AttendanceModule';
+import AnalyticsView from '../components/AnalyticsView';
 
 const CoordinatorDashboard = ({ user, role }) => {
   const [assignedCells, setAssignedCells] = useState([]);
@@ -14,7 +15,7 @@ const CoordinatorDashboard = ({ user, role }) => {
   const [courseWork, setCourseWork] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'students', 'attendance', 'assignments'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'students', 'attendance', 'assignments', 'analytics'
 
   useEffect(() => {
     if (user?.email) {
@@ -198,7 +199,8 @@ const CoordinatorDashboard = ({ user, role }) => {
               { id: 'overview', name: 'Resumen', icon: '📊' },
               { id: 'students', name: 'Estudiantes', icon: '👥' },
               { id: 'assignments', name: 'Trabajos', icon: '📝' },
-              { id: 'attendance', name: 'Asistencia', icon: '📋' }
+              { id: 'attendance', name: 'Asistencia', icon: '📋' },
+              { id: 'analytics', name: 'Analíticas', icon: '📈' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -555,6 +557,20 @@ const CoordinatorDashboard = ({ user, role }) => {
             filteredStudents={cellStudents}
             isCoordinatorView={true}
             cellName={selectedCell.name}
+          />
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && selectedCell && (
+          <AnalyticsView
+            role="coordinator"
+            courseId={selectedCell.courseId}
+            courseName={selectedCell.courseName}
+            students={students}
+            courseWork={courseWork}
+            filteredStudents={cellStudents}
+            cellName={selectedCell.name}
+            user={user}
           />
         )}
     </div>

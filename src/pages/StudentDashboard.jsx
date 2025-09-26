@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getStudentCourses, getAssignments, getGoogleAccessToken, getAllCourseContent, getStudentSubmissions, getUserRoleInCourse, getCourseMaterials, getCourseTopics } from '../services/googleApi';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
+import AnalyticsView from '../components/AnalyticsView';
 
 const StudentDashboard = ({ user }) => {
   const [courses, setCourses] = useState([]);
@@ -8,6 +9,8 @@ const StudentDashboard = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'analytics'
+  const [courseWork, setCourseWork] = useState([]);
 
   useEffect(() => {
     loadStudentData();
@@ -260,6 +263,10 @@ const StudentDashboard = ({ user }) => {
                 const accessToken = getGoogleAccessToken();
                 await loadCourseAssignments(course.id, accessToken);
                 
+                // Load course work for analytics
+                const courseWorkData = await getAllCourseContent(course.id, accessToken);
+                setCourseWork(courseWorkData);
+                
                 // Clear any previous error if assignments loaded successfully
                 if (error) setError(null);
               } catch (error) {
@@ -298,9 +305,41 @@ const StudentDashboard = ({ user }) => {
         </select>
       </div>
 
-      {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card">
+      {/* Tabs */}
+      {selectedCourse && (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'overview'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 Resumen
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'analytics'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📈 Mi Progreso
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* Tab Content - Overview */}
+      {selectedCourse && activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Progress Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card">
           <h4 className="font-medium text-gray-900 mb-2">Progreso General</h4>
           <div className="flex items-center space-x-3">
             <div className="flex-1 bg-gray-200 rounded-full h-2">
@@ -333,53 +372,67 @@ const StudentDashboard = ({ user }) => {
         </div>
       </div>
 
-      {/* Assignments List */}
-      <div className="card">
-        <h4 className="text-lg font-medium text-gray-900 mb-4">
-          Contenido del Curso
-        </h4>
+          {/* Assignments List */}
+          <div className="card">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">
+              Contenido del Curso
+            </h4>
 
-        {assignments.length === 0 ? (
-          <div className="text-center py-8">
-            {error && error.includes('permisos') ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <span className="text-2xl">🔒</span>
-                </div>
-                <p className="text-yellow-800 font-medium mb-1">Acceso Restringido</p>
-                <p className="text-yellow-700 text-sm">
-                  No tienes permisos para ver las tareas de este curso. 
-                  El profesor debe agregarte como estudiante para ver las tareas.
-                </p>
+            {assignments.length === 0 ? (
+              <div className="text-center py-8">
+                {error && error.includes('permisos') ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center justify-center mb-2">
+                      <span className="text-2xl">🔒</span>
+                    </div>
+                    <p className="text-yellow-800 font-medium mb-1">Acceso Restringido</p>
+                    <p className="text-yellow-700 text-sm">
+                      No tienes permisos para ver las tareas de este curso. 
+                      El profesor debe agregarte como estudiante para ver las tareas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">
+                    <span className="text-2xl mb-2 block">📚</span>
+                    <p>No hay tareas disponibles en este curso.</p>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="text-gray-500">
-                <span className="text-2xl mb-2 block">📚</span>
-                <p>No hay tareas disponibles en este curso.</p>
+              <div className="space-y-4">
+                {assignments.map((assignment) => (
+                  <AssignmentStatusCard
+                    key={assignment.id}
+                    coursework={assignment}
+                    students={[]}
+                    courseId={selectedCourse?.id}
+                    accessToken={getGoogleAccessToken()}
+                    userRole="STUDENT"
+                    onViewDetails={(coursework) => {
+                      // Open coursework in Google Classroom
+                      if (coursework.alternateLink) {
+                        window.open(coursework.alternateLink, '_blank');
+                      }
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>
-        ) : (
-          <div className="space-y-4">
-            {assignments.map((assignment) => (
-              <AssignmentStatusCard
-                key={assignment.id}
-                coursework={assignment}
-                students={[]}
-                courseId={selectedCourse?.id}
-                accessToken={getGoogleAccessToken()}
-                userRole="STUDENT"
-                onViewDetails={(coursework) => {
-                  // Open coursework in Google Classroom
-                  if (coursework.alternateLink) {
-                    window.open(coursework.alternateLink, '_blank');
-                  }
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Tab Content - Analytics */}
+      {selectedCourse && activeTab === 'analytics' && (
+        <AnalyticsView
+          role="student"
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
+          students={[]}
+          courseWork={courseWork}
+          user={user}
+        />
+      )}
     </div>
   );
 };
