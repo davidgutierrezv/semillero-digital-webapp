@@ -550,6 +550,8 @@ const CoordinatorDashboard = ({ user, role }) => {
           <AttendanceModule
             courseId={selectedCell.courseId}
             courseName={selectedCell.courseName}
+            students={students}
+            user={user}
             filteredStudents={cellStudents}
             isCoordinatorView={true}
             cellName={selectedCell.name}

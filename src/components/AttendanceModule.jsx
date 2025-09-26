@@ -19,7 +19,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
   }, [courseId, students, filteredStudents]);
 
   // Determinar qué estudiantes usar
-  const studentsToUse = isCoordinatorView && filteredStudents ? filteredStudents : students;
+  const studentsToUse = isCoordinatorView && filteredStudents ? filteredStudents : (students || []);
 
   const initializeAttendance = () => {
     // Inicializar asistencia para los estudiantes correspondientes
@@ -91,7 +91,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
 
   const handleMarkAll = (status) => {
     const newAttendance = {};
-    students.forEach(student => {
+    studentsToUse.forEach(student => {
       const email = getStudentEmail(student);
       if (email) {
         newAttendance[email] = status;
@@ -110,7 +110,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
       const savePromises = [];
       
       Object.entries(attendance).forEach(([studentEmail, status]) => {
-        const student = students.find(s => getStudentEmail(s) === studentEmail);
+        const student = studentsToUse.find(s => getStudentEmail(s) === studentEmail);
         if (student) {
           const attendanceData = {
             courseId,
@@ -399,7 +399,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
               </div>
               <button
                 onClick={saveAttendance}
-                disabled={saving || students.length === 0}
+                disabled={saving || studentsToUse.length === 0}
                 className="btn-primary flex items-center space-x-2"
               >
                 {saving ? (
