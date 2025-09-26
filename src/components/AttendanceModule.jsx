@@ -18,6 +18,10 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
     initializeAttendance();
   }, [courseId, students, filteredStudents]);
 
+  useEffect(() => {
+    loadAttendanceForDate();
+  }, [selectedDate]);
+
   // Determinar qué estudiantes usar
   const studentsToUse = isCoordinatorView && filteredStudents ? filteredStudents : (students || []);
 
@@ -27,7 +31,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
     studentsToUse.forEach(student => {
       const email = getStudentEmail(student);
       if (email) {
-        initialAttendance[email] = false; // Por defecto ausente
+        initialAttendance[email] = null; // Sin marcar por defecto
       }
     });
     setAttendance(initialAttendance);
@@ -46,11 +50,11 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
       
       const attendanceMap = {};
       
-      // Inicializar todos los estudiantes como presentes
+      // Inicializar todos los estudiantes sin marcar (null)
       studentsToUse.forEach(student => {
         const email = getStudentEmail(student);
         if (email) {
-          attendanceMap[email] = 'presente';
+          attendanceMap[email] = null; // Sin marcar por defecto
         }
       });
       
@@ -105,6 +109,14 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
       setSaving(true);
       setError(null);
       setSuccess(null);
+
+      // Verificar que todos los estudiantes tengan un estado marcado
+      const unmarkedStudents = Object.entries(attendance).filter(([email, status]) => !status);
+      if (unmarkedStudents.length > 0) {
+        setError(`Por favor, marca la asistencia para todos los estudiantes. ${unmarkedStudents.length} estudiante(s) sin marcar.`);
+        setSaving(false);
+        return;
+      }
 
       // Guardar cada registro de asistencia individualmente
       const savePromises = [];
@@ -347,7 +359,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
                 {studentsToUse.map((student) => {
                   const email = getStudentEmail(student);
                   const name = getStudentName(student);
-                  const currentStatus = attendance[email] || 'presente';
+                  const currentStatus = attendance[email]; // Puede ser null, 'presente', 'ausente', 'justificado'
                   
                   return (
                     <div key={getStudentId(student)} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -365,7 +377,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
                       
                       <div className="flex items-center space-x-2">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(currentStatus)}`}>
-                          {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
+                          {currentStatus ? currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1) : 'Sin marcar'}
                         </span>
                         
                         <div className="flex items-center space-x-1">
@@ -399,7 +411,7 @@ const AttendanceModule = ({ courseId, courseName, students, user, filteredStuden
               </div>
               <button
                 onClick={saveAttendance}
-                disabled={saving || studentsToUse.length === 0}
+                disabled={saving || studentsToUse.length === 0 || Object.values(attendance).some(status => !status)}
                 className="btn-primary flex items-center space-x-2"
               >
                 {saving ? (
