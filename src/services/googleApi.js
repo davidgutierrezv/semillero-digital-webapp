@@ -71,6 +71,19 @@ export const getCourseStudents = async (courseId, accessToken) => {
 };
 
 /**
+ * Get all teachers of a specific course
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of teacher objects
+ */
+export const getCourseTeachers = async (courseId, accessToken) => {
+  // Include profile fields to get email addresses
+  const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/teachers?fields=teachers(courseId,userId,profile(id,name,emailAddress,photoUrl))`;
+  const data = await fetchGoogleApi(url, accessToken);
+  return data.teachers || [];
+};
+
+/**
  * Get user's role in a specific course
  * @param {string} courseId - The course ID
  * @param {string} accessToken - The user's access token

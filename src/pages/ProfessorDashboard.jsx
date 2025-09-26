@@ -5,6 +5,7 @@ import AttendanceModule from '../components/AttendanceModule';
 import StudentProgressRow from '../components/StudentProgressRow';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
 import CellManagement from '../components/CellManagement';
+import ParticipantsView from '../components/ParticipantsView';
 
 const ProfessorDashboard = ({ user, role }) => {
   const [courses, setCourses] = useState([]);
@@ -15,7 +16,7 @@ const ProfessorDashboard = ({ user, role }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants'
   const [showAttendance, setShowAttendance] = useState(false);
 
   useEffect(() => {
@@ -310,6 +311,17 @@ const ProfessorDashboard = ({ user, role }) => {
             >
               📅 Asistencia
             </button>
+            
+            <button
+              onClick={() => setActiveTab('participants')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'participants'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              👥 Participantes ({students.length})
+            </button>
           </nav>
         </div>
       )}
@@ -433,6 +445,14 @@ const ProfessorDashboard = ({ user, role }) => {
           courseName={selectedCourse.name}
           students={students}
           user={user}
+        />
+      )}
+
+      {/* Tab Content - Participants */}
+      {selectedCourse && activeTab === 'participants' && (
+        <ParticipantsView
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
         />
       )}
     </div>
