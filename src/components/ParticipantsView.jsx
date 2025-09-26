@@ -5,6 +5,7 @@ import { getAllStudentsData, getAllTeachersData, isUserRegisteredInTelegram, sav
 import { validateTelegramConfig, sendMessageToUser, formatStudentMessage, getBotInfo } from '../services/telegramApi';
 import PhoneModal from './PhoneModal';
 import TelegramMessageModal from './TelegramMessageModal';
+import TelegramChatIdHelper from './TelegramChatIdHelper';
 
 const ParticipantsView = ({ courseId, courseName }) => {
   const [teachers, setTeachers] = useState([]);
@@ -20,7 +21,9 @@ const ParticipantsView = ({ courseId, courseName }) => {
   const [participantType, setParticipantType] = useState('student'); // 'student' or 'teacher'
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showChatIdHelper, setShowChatIdHelper] = useState(false);
   const [selectedTelegramParticipant, setSelectedTelegramParticipant] = useState(null);
+  const [selectedChatIdParticipant, setSelectedChatIdParticipant] = useState(null);
   const [telegramConfig, setTelegramConfig] = useState({ ready: false });
   const [botInfo, setBotInfo] = useState(null);
   const [sendingTelegram, setSendingTelegram] = useState(null); // Email del participante al que se está enviando
@@ -147,6 +150,24 @@ const ParticipantsView = ({ courseId, courseName }) => {
       console.error('Error registering user in Telegram:', error);
       alert('❌ Error al registrar usuario en Telegram');
     }
+  };
+
+  const handleOpenChatIdHelper = (participant) => {
+    const email = getParticipantEmail(participant);
+    const name = getParticipantName(participant);
+    
+    setSelectedChatIdParticipant({
+      name,
+      email,
+      userId: participant.userId,
+      profileId: participant.profile?.id
+    });
+    setShowChatIdHelper(true);
+  };
+
+  const handleChatIdSaved = () => {
+    // Recargar registros de Telegram
+    loadTelegramRegistrations();
   };
 
   const handleEditPhone = (participant, type = 'student') => {
@@ -395,17 +416,31 @@ const ParticipantsView = ({ courseId, courseName }) => {
                   )}
                 </button>
 
-                {/* Botón de Registro (solo si no está registrado) */}
+                {/* Botones de Registro (solo si no está registrado) */}
                 {!isRegisteredInTelegram && (
-                  <button
-                    onClick={() => handleRegisterUserInTelegram(participant)}
-                    className="p-2 text-gray-400 hover:text-green-500 transition-colors"
-                    title="Registrar en Telegram (modo prueba)"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </button>
+                  <>
+                    {/* Botón para Chat ID Real */}
+                    <button
+                      onClick={() => handleOpenChatIdHelper(participant)}
+                      className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                      title="Obtener Chat ID real de Telegram"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </button>
+                    
+                    {/* Botón de Prueba */}
+                    <button
+                      onClick={() => handleRegisterUserInTelegram(participant)}
+                      className="p-2 text-gray-400 hover:text-green-500 transition-colors"
+                      title="Registrar en Telegram (modo prueba)"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -631,6 +666,18 @@ const ParticipantsView = ({ courseId, courseName }) => {
         participant={selectedTelegramParticipant}
         courseName={courseName}
         onSend={handleSendTelegramMessage}
+      />
+
+      {/* Telegram Chat ID Helper Modal */}
+      <TelegramChatIdHelper
+        isOpen={showChatIdHelper}
+        onClose={() => {
+          setShowChatIdHelper(false);
+          setSelectedChatIdParticipant(null);
+        }}
+        participant={selectedChatIdParticipant}
+        courseId={courseId}
+        onSuccess={handleChatIdSaved}
       />
     </div>
   );
