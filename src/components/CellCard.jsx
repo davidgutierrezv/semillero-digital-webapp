@@ -10,7 +10,7 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
   };
 
   const getStatusText = () => {
-    if (!cell.assistantEmail) return 'Sin Asistente';
+    if (!cell.assistantEmail) return 'Sin Coordinador';
     if (!cell.studentEmails || cell.studentEmails.length === 0) return 'Sin Estudiantes';
     return 'Activa';
   };
@@ -85,7 +85,7 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
         {/* Assistant Info */}
         <div className="mb-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Asistente Asignado</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Coordinador Asignado</h4>
           </div>
           
           {cell.assistantEmail ? (
@@ -97,7 +97,7 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {cell.assistantName || 'Asistente'}
+                  {cell.assistantName || 'Coordinador'}
                 </p>
                 <p className="text-xs text-gray-600 truncate">
                   {cell.assistantEmail}
@@ -106,7 +106,7 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
             </div>
           ) : (
             <div className="p-2 bg-red-50 rounded-lg text-center">
-              <p className="text-sm text-red-600">Sin asistente asignado</p>
+              <p className="text-sm text-red-600">Sin coordinador asignado</p>
             </div>
           )}
         </div>

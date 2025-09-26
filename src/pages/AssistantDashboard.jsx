@@ -173,7 +173,7 @@ const AssistantDashboard = ({ user, role, roleInfo }) => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando datos del asistente...</p>
+          <p className="text-gray-600">Cargando datos del coordinador...</p>
         </div>
       </div>
     );
@@ -199,7 +199,7 @@ const AssistantDashboard = ({ user, role, roleInfo }) => {
       <div className="text-center py-12">
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
           <p className="font-medium">No hay células asignadas</p>
-          <p>No tienes células asignadas como asistente. Contacta al coordinador del programa.</p>
+          <p>No tienes células asignadas como coordinador. Contacta al coordinador para que te asigne una célula del programa.</p>
         </div>
       </div>
     );
@@ -209,7 +209,7 @@ const AssistantDashboard = ({ user, role, roleInfo }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">
-          Dashboard del Asistente
+          Dashboard del Coordinador
         </h3>
         <button
           onClick={loadAssistantData}

@@ -209,7 +209,7 @@ const ProgressView = ({ courseId, courseName, students, cells, courseWork, user,
                       <div>
                         <h4 className="text-lg font-medium text-gray-900">{cell.name}</h4>
                         <p className="text-sm text-gray-600">
-                          Asistente: {cell.assistantName || cell.assistantEmail} | {studentsInCell.length} estudiantes
+                          Coordinador: {cell.assistantName || cell.assistantEmail} | {studentsInCell.length} estudiantes
                         </p>
                       </div>
                       <div className="text-sm text-gray-500">

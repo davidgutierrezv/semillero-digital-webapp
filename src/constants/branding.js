@@ -11,7 +11,7 @@ export const BRANDING = {
   // Organization Info
   ORGANIZATION_NAME: 'Semillero Digital',
   TAGLINE: 'Dashboard de Gestión',
-  DESCRIPTION: 'Dashboard de gestión para profesores y asistentes',
+  DESCRIPTION: 'Dashboard de gestión para profesores y coordinadores de semillero digital',
   
   // Colors (matching Tailwind config)
   COLORS: {

@@ -47,7 +47,7 @@ const CellForm = ({ cell, students, teachers, unassignedStudents, onSave, onCanc
     }
 
     if (formData.assistantEmail && !formData.assistantName.trim()) {
-      newErrors.assistantName = 'El nombre del asistente es requerido';
+      newErrors.assistantName = 'El nombre del coordinador es requerido';
     }
 
     setErrors(newErrors);
@@ -276,12 +276,12 @@ const CellForm = ({ cell, students, teachers, unassignedStudents, onSave, onCanc
 
             {/* Assistant Assignment */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Asistente</h3>
+              <h3 className="text-lg font-medium text-gray-900">Coordinador</h3>
               
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Seleccionar Profesor como Asistente
+                    Seleccionar Profesor como Coordinador
                   </label>
                   {currentUser && (
                     <button

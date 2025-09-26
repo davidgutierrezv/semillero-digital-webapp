@@ -140,7 +140,7 @@ const CellManagement = ({ courseId, courseName, students, teachers, accessToken,
             Gestión de Células - {courseName}
           </h3>
           <p className="text-sm text-gray-600">
-            Organiza estudiantes en grupos con asistentes asignados
+            Organiza estudiantes en grupos con coordinadores asignados
           </p>
         </div>
         
@@ -191,7 +191,7 @@ const CellManagement = ({ courseId, courseName, students, teachers, accessToken,
           <div className="text-2xl font-bold text-purple-600">
             {cells.filter(cell => cell.assistantEmail).length}
           </div>
-          <div className="text-sm text-purple-600">Con Asistente</div>
+          <div className="text-sm text-purple-600">Con Coordinador</div>
         </div>
       </div>
 

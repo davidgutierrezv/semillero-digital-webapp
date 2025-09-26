@@ -17,12 +17,12 @@ const Header = ({ user, userRole }) => {
     const roleNames = {
       // Legacy roles
       student: 'Estudiante',
-      assistant: 'Asistente',
+      assistant: 'Coordinador',
       professor: 'Profesor',
       coordinator: 'Coordinador',
       // New roles
       'STUDENT': 'Estudiante',
-      'ASSISTANT': 'Asistente',
+      'ASSISTANT': 'Coordinador',
       'PROFESSOR': 'Profesor',
       'COORDINATOR': 'Coordinador'
     };
