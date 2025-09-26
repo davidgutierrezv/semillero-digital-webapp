@@ -31,6 +31,7 @@ const ParticipantsView = ({ courseId, courseName }) => {
     }
     // Validar configuración de Telegram
     setTelegramConfig(validateTelegramConfig());
+    console.log('🔍 Telegram Token:', import.meta.env.VITE_TELEGRAM_BOT_TOKEN ? 'CONFIGURADO ✅' : 'NO CONFIGURADO ❌');
   }, [courseId]);
 
   const loadParticipants = async () => {
