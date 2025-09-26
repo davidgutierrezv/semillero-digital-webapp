@@ -6,6 +6,7 @@ import StudentProgressRow from '../components/StudentProgressRow';
 import AssignmentStatusCard from '../components/AssignmentStatusCard';
 import CellManagement from '../components/CellManagement';
 import ParticipantsView from '../components/ParticipantsView';
+import ProgressView from '../components/ProgressView';
 
 const ProfessorDashboard = ({ user, role }) => {
   const [courses, setCourses] = useState([]);
@@ -16,7 +17,7 @@ const ProfessorDashboard = ({ user, role }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants', 'progress'
   const [showAttendance, setShowAttendance] = useState(false);
 
   useEffect(() => {
@@ -322,6 +323,17 @@ const ProfessorDashboard = ({ user, role }) => {
             >
               👥 Participantes ({students.length})
             </button>
+            
+            <button
+              onClick={() => setActiveTab('progress')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'progress'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 Progreso ({courseWork.length})
+            </button>
           </nav>
         </div>
       )}
@@ -406,6 +418,13 @@ const ProfessorDashboard = ({ user, role }) => {
                   <span>Tomar Asistencia</span>
                 </button>
                 <button
+                  onClick={() => setActiveTab('progress')}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <span>📊</span>
+                  <span>Ver Progreso</span>
+                </button>
+                <button
                   onClick={() => window.open(selectedCourse.alternateLink, '_blank')}
                   className="btn-secondary flex items-center space-x-2"
                   disabled={!selectedCourse.alternateLink}
@@ -473,6 +492,19 @@ const ProfessorDashboard = ({ user, role }) => {
         <ParticipantsView
           courseId={selectedCourse.id}
           courseName={selectedCourse.name}
+        />
+      )}
+
+      {/* Tab Content - Progress */}
+      {selectedCourse && activeTab === 'progress' && (
+        <ProgressView
+          courseId={selectedCourse.id}
+          courseName={selectedCourse.name}
+          students={students}
+          cells={cells}
+          courseWork={courseWork}
+          user={user}
+          role={role}
         />
       )}
     </div>
