@@ -232,12 +232,12 @@ const ProfessorDashboard = ({ user, role }) => {
           Dashboard del {role === 'coordinator' ? 'Coordinador' : 'Profesor'}
         </h3>
         <div className="flex items-center space-x-3">
-          <button
+          {/*<button
             onClick={() => setShowAttendance(!showAttendance)}
             className="btn-secondary"
           >
             {showAttendance ? 'Ocultar' : 'Mostrar'} Asistencia
-          </button>
+          </button>*/}
           <button onClick={exportToCSV} className="btn-primary">
             Exportar CSV
           </button>
