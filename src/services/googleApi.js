@@ -70,15 +70,53 @@ export const getCourseStudents = async (courseId, accessToken) => {
 };
 
 /**
+ * Get user's role in a specific course
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<string>} - User's role in the course
+ */
+export const getUserRoleInCourse = async (courseId, accessToken) => {
+  try {
+    // Try to get user as student
+    const studentsUrl = `${BASE_CLASSROOM_URL}/courses/${courseId}/students/me`;
+    await fetchGoogleApi(studentsUrl, accessToken);
+    return 'STUDENT';
+  } catch (studentError) {
+    try {
+      // Try to get user as teacher
+      const teachersUrl = `${BASE_CLASSROOM_URL}/courses/${courseId}/teachers/me`;
+      await fetchGoogleApi(teachersUrl, accessToken);
+      return 'TEACHER';
+    } catch (teacherError) {
+      // User might be a viewer or have limited access
+      return 'VIEWER';
+    }
+  }
+};
+
+/**
  * Get all coursework (assignments) for a specific course
  * @param {string} courseId - The course ID
  * @param {string} accessToken - The user's access token
  * @returns {Promise<Array>} - Array of coursework objects
  */
 export const getCourseWork = async (courseId, accessToken) => {
-  const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/courseWork`;
-  const data = await fetchGoogleApi(url, accessToken);
-  return data.courseWork || [];
+  try {
+    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/courseWork`;
+    const data = await fetchGoogleApi(url, accessToken);
+    return data.courseWork || [];
+  } catch (error) {
+    // If 403, check user role for better error message
+    if (error.message.includes('403')) {
+      const userRole = await getUserRoleInCourse(courseId, accessToken);
+      console.log(`User role in course ${courseId}: ${userRole}`);
+      
+      if (userRole === 'VIEWER') {
+        throw new Error(`403: No tienes permisos de estudiante en este curso. Tu rol actual es: ${userRole}`);
+      }
+    }
+    throw error;
+  }
 };
 
 /**
@@ -155,6 +193,13 @@ export const getAssignments = async (courseId, accessToken) => {
     return assignmentsWithStatus;
   } catch (error) {
     console.error('Error getting assignments:', error);
+    
+    // If it's a 403 error, return empty array instead of throwing
+    if (error.message.includes('403')) {
+      console.warn(`No permission to access coursework for course ${courseId}. Returning empty assignments.`);
+      return [];
+    }
+    
     throw error;
   }
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCourses, getAssignments, getGoogleAccessToken, getCourseWork, getStudentSubmissions } from '../services/googleApi';
+import { getCourses, getAssignments, getGoogleAccessToken, getCourseWork, getStudentSubmissions, getUserRoleInCourse } from '../services/googleApi';
 
 const StudentDashboard = ({ user }) => {
   const [courses, setCourses] = useState([]);
@@ -199,9 +199,32 @@ const StudentDashboard = ({ user }) => {
                 const accessToken = getGoogleAccessToken();
                 const assignmentsData = await getAssignments(course.id, accessToken);
                 setAssignments(assignmentsData);
+                
+                // Clear any previous error if assignments loaded successfully
+                if (error) setError(null);
               } catch (error) {
                 console.error('Error loading assignments for course:', error);
-                setError('Error al cargar las tareas del curso.');
+                
+                if (error.message.includes('403')) {
+                  // Try to get user role for better error message
+                  try {
+                    const userRole = await getUserRoleInCourse(course.id, accessToken);
+                    console.log(`Tu rol en el curso "${course.name}": ${userRole}`);
+                    
+                    if (userRole === 'VIEWER') {
+                      setError(`Eres un "Visualizador" en el curso "${course.name}". Necesitas ser "Estudiante" para ver las tareas vía API. Contacta al profesor.`);
+                    } else if (userRole === 'TEACHER') {
+                      setError(`Eres profesor en este curso. Cambia a la vista de profesor para ver las tareas.`);
+                    } else {
+                      setError(`Tu rol "${userRole}" no permite ver tareas vía API en "${course.name}".`);
+                    }
+                  } catch (roleError) {
+                    setError(`No tienes permisos para ver las tareas del curso "${course.name}". Contacta al profesor para obtener acceso como estudiante.`);
+                  }
+                  setAssignments([]); // Clear assignments
+                } else {
+                  setError('Error al cargar las tareas del curso.');
+                }
               }
             }
           }}
@@ -258,7 +281,23 @@ const StudentDashboard = ({ user }) => {
 
         {assignments.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500">No hay tareas disponibles en este curso.</p>
+            {error && error.includes('permisos') ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <span className="text-2xl">🔒</span>
+                </div>
+                <p className="text-yellow-800 font-medium mb-1">Acceso Restringido</p>
+                <p className="text-yellow-700 text-sm">
+                  No tienes permisos para ver las tareas de este curso. 
+                  El profesor debe agregarte como estudiante para ver las tareas.
+                </p>
+              </div>
+            ) : (
+              <div className="text-gray-500">
+                <span className="text-2xl mb-2 block">📚</span>
+                <p>No hay tareas disponibles en este curso.</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
