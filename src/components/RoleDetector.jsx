@@ -17,6 +17,9 @@ const RoleDetector = ({ user, onRoleSelected }) => {
     if (savedRole) {
       // Validate the saved role is still valid
       validateSavedRole(savedRole);
+    } else {
+      // No saved role, show selector
+      setShowRoleSelector(true);
     }
   }, [user]);
 
@@ -118,7 +121,13 @@ const RoleDetector = ({ user, onRoleSelected }) => {
                   {currentRole === 'STUDENT' && 'Vista de Estudiante'}
                 </span>
                 <div className="text-xs text-gray-500">
-                  {roleInfo && `${roleInfo.statistics.totalCourses} curso(s) total`}
+                  {roleInfo && currentRole && (
+                    <>
+                      {currentRole === 'PROFESSOR' && `${roleInfo.statistics.teacherCourses} curso(s) como profesor`}
+                      {currentRole === 'ASSISTANT' && `${roleInfo.statistics.teacherCourses} curso(s) disponibles`}
+                      {currentRole === 'STUDENT' && `${roleInfo.statistics.studentCourses} curso(s) como estudiante`}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

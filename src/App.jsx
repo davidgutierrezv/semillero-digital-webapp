@@ -26,13 +26,13 @@ function App() {
           // Get user role from Firestore
           let userData = await getUserRole(firebaseUser.uid);
           
-          // If user doesn't exist in Firestore, create with default role
+          // If user doesn't exist in Firestore, create without default role
           if (!userData) {
             userData = {
               email: firebaseUser.email,
               name: firebaseUser.displayName || firebaseUser.email,
               photoURL: firebaseUser.photoURL,
-              role: 'student' // Default role
+              role: null // No default role - will be determined by Google Classroom permissions
             };
             
             await createOrUpdateUser(firebaseUser.uid, userData);
@@ -89,11 +89,15 @@ function App() {
 
   const handleRoleSelected = (role) => {
     setSelectedRole(role);
+    // If role is null (changing role), clear the selected role
+    if (role === null) {
+      setSelectedRole(null);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header user={user} userRole={selectedRole || userRole} />
+      <Header user={user} userRole={selectedRole} />
       <main className="flex-1">
         <RoleDetector user={user} onRoleSelected={handleRoleSelected} />
       </main>
