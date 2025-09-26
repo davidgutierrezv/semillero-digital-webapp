@@ -58,6 +58,26 @@ const AssignmentStatusCard = ({
     };
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      'SUBMITTED': { text: 'Entregado', color: 'bg-green-100 text-green-800' },
+      'TURNED_IN': { text: 'Entregado', color: 'bg-green-100 text-green-800' },
+      'GRADED': { text: 'Calificado', color: 'bg-blue-100 text-blue-800' },
+      'NOT_SUBMITTED': { text: 'Pendiente', color: 'bg-gray-100 text-gray-800' },
+      'NOT_ASSIGNED': { text: 'No asignado', color: 'bg-orange-100 text-orange-800' },
+      'OVERDUE': { text: 'Atrasado', color: 'bg-red-100 text-red-800' },
+      'RETURNED': { text: 'Devuelto', color: 'bg-yellow-100 text-yellow-800' },
+      'NO_SUBMISSION_REQUIRED': { text: 'Solo lectura', color: 'bg-indigo-100 text-indigo-800' }
+    };
+    
+    const badge = badges[status] || { text: status, color: 'bg-gray-100 text-gray-800' };
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
+        {badge.text}
+      </span>
+    );
+  };
+
   const getStatusIcon = (status) => {
     const icons = {
       'SUBMITTED': '✅',
@@ -67,7 +87,8 @@ const AssignmentStatusCard = ({
       'NOT_ASSIGNED': '❌',
       'OVERDUE': '🔴',
       'RETURNED': '🔄',
-      'RECLAIMED_BY_STUDENT': '↩️'
+      'RECLAIMED_BY_STUDENT': '↩️',
+      'NO_SUBMISSION_REQUIRED': '👁️'
     };
     return icons[status] || '📄';
   };
@@ -81,7 +102,8 @@ const AssignmentStatusCard = ({
       'NOT_ASSIGNED': 'bg-orange-50 border-orange-200 text-orange-800',
       'OVERDUE': 'bg-red-50 border-red-200 text-red-800',
       'RETURNED': 'bg-yellow-50 border-yellow-200 text-yellow-800',
-      'RECLAIMED_BY_STUDENT': 'bg-purple-50 border-purple-200 text-purple-800'
+      'RECLAIMED_BY_STUDENT': 'bg-purple-50 border-purple-200 text-purple-800',
+      'NO_SUBMISSION_REQUIRED': 'bg-indigo-50 border-indigo-200 text-indigo-800'
     };
     return colors[status] || 'bg-gray-50 border-gray-200 text-gray-800';
   };
@@ -99,10 +121,10 @@ const AssignmentStatusCard = ({
               {coursework.typeName || coursework.workType}
             </span>
             
-            {/* Status Badge for Students */}
-            {coursework.submissionStatus && (
+            {/* Status Badge for Students - only show if submission is required */}
+            {coursework.submissionStatus && coursework.requiresSubmission !== false && (
               <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(coursework.submissionStatus)}`}>
-                {getStatusIcon(coursework.submissionStatus)} {coursework.submissionStatus}
+                {getStatusIcon(coursework.submissionStatus)} {getStatusBadge(coursework.submissionStatus).props.children}
               </span>
             )}
           </div>

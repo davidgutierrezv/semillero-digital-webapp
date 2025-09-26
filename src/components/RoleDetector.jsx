@@ -8,8 +8,9 @@ import RoleSelector from './RoleSelector';
 const RoleDetector = ({ user, onRoleSelected }) => {
   const [userRole, setUserRole] = useState(null);
   const [roleInfo, setRoleInfo] = useState(null);
-  const [showRoleSelector, setShowRoleSelector] = useState(true);
+  const [showRoleSelector, setShowRoleSelector] = useState(false); // Start as false
   const [manualRoleOverride, setManualRoleOverride] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   useEffect(() => {
     // Check if user has a previously selected role
@@ -20,6 +21,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
     } else {
       // No saved role, show selector
       setShowRoleSelector(true);
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -35,6 +37,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
         setUserRole(savedRole);
         setRoleInfo(roleData);
         setShowRoleSelector(false);
+        setIsLoading(false);
         
         // Notify parent component about role selection
         if (onRoleSelected) {
@@ -44,11 +47,13 @@ const RoleDetector = ({ user, onRoleSelected }) => {
         // Remove invalid saved role
         localStorage.removeItem('selectedRole');
         setShowRoleSelector(true);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error validating saved role:', error);
       localStorage.removeItem('selectedRole');
       setShowRoleSelector(true);
+      setIsLoading(false);
     }
   };
 
@@ -73,6 +78,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
     setUserRole(selectedRole);
     setRoleInfo(roleData);
     setShowRoleSelector(false);
+    setIsLoading(false);
     
     // Notify parent component about role selection
     if (onRoleSelected) {
@@ -84,6 +90,7 @@ const RoleDetector = ({ user, onRoleSelected }) => {
     localStorage.removeItem('selectedRole');
     setShowRoleSelector(true);
     setManualRoleOverride(null);
+    setIsLoading(false);
     
     // Clear role selection in parent component
     if (onRoleSelected) {
@@ -94,6 +101,18 @@ const RoleDetector = ({ user, onRoleSelected }) => {
   const getCurrentRole = () => {
     return manualRoleOverride || userRole;
   };
+
+  // Show loading while validating saved role
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Validando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show role selector if needed
   if (showRoleSelector) {

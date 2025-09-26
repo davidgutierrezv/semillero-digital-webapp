@@ -48,29 +48,46 @@ const StudentDashboard = ({ user }) => {
       const detailedCoursework = await getAllCourseContent(courseId, accessToken);
       console.log('Detailed coursework loaded:', detailedCoursework.length);
       
-      // For each coursework, try to get submission status
+      // For each content item, get submission status only if it's submittable
       const assignmentsWithStatus = await Promise.all(
         detailedCoursework.map(async (assignment) => {
-          try {
-            const submissions = await getStudentSubmissions(courseId, assignment.id, accessToken);
-            const userSubmission = submissions.find(sub => sub.userId === 'me') || submissions[0];
-            
+          // Check if this content type requires submissions
+          const requiresSubmission = ['ASSIGNMENT', 'QUIZ_ASSIGNMENT', 'SHORT_ANSWER_QUESTION', 'MULTIPLE_CHOICE_QUESTION'].includes(assignment.workType);
+          
+          if (requiresSubmission) {
+            try {
+              const submissions = await getStudentSubmissions(courseId, assignment.id, accessToken);
+              const userSubmission = submissions.find(sub => sub.userId === 'me') || submissions[0];
+              
+              return {
+                ...assignment,
+                submissionStatus: userSubmission?.state || 'NOT_SUBMITTED',
+                grade: userSubmission?.assignedGrade,
+                submissionHistory: userSubmission?.submissionHistory || [],
+                isAssigned: true,
+                requiresSubmission: true
+              };
+            } catch (submissionError) {
+              console.warn(`Error getting submissions for assignment ${assignment.id}:`, submissionError.message);
+              
+              return {
+                ...assignment,
+                submissionStatus: submissionError.message.includes('403') ? 'NOT_ASSIGNED' : 'ERROR',
+                grade: null,
+                submissionHistory: [],
+                isAssigned: !submissionError.message.includes('403'),
+                requiresSubmission: true
+              };
+            }
+          } else {
+            // For content that doesn't require submissions (announcements, materials, topics)
             return {
               ...assignment,
-              submissionStatus: userSubmission?.state || 'NOT_SUBMITTED',
-              grade: userSubmission?.assignedGrade,
-              submissionHistory: userSubmission?.submissionHistory || [],
-              isAssigned: true
-            };
-          } catch (submissionError) {
-            console.warn(`Error getting submissions for assignment ${assignment.id}:`, submissionError.message);
-            
-            return {
-              ...assignment,
-              submissionStatus: submissionError.message.includes('403') ? 'NOT_ASSIGNED' : 'ERROR',
+              submissionStatus: 'NO_SUBMISSION_REQUIRED',
               grade: null,
               submissionHistory: [],
-              isAssigned: !submissionError.message.includes('403')
+              isAssigned: true,
+              requiresSubmission: false
             };
           }
         })
