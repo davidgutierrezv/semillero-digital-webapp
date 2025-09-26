@@ -330,100 +330,120 @@ const ProfessorDashboard = ({ user, role }) => {
       {selectedCourse && activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Course Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card">
-              <h4 className="font-medium text-gray-900 mb-2">Estudiantes</h4>
-              <p className="text-2xl font-bold text-primary-600">{students.length}</p>
-            </div>
-            <div className="card">
-              <h4 className="font-medium text-gray-900 mb-2">Células</h4>
-              <p className="text-2xl font-bold text-primary-600">{cells.length}</p>
-            </div>
-            <div className="card">
-              <h4 className="font-medium text-gray-900 mb-2">Tareas</h4>
-              <p className="text-2xl font-bold text-primary-600">{courseWork.length}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cells and Student Progress */}
-      {selectedCourse && (
-        <div className="card">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">
-            Progreso por Células
-          </h4>
-          
-          {loading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
-              <p className="text-gray-600">Cargando progreso...</p>
-            </div>
-          ) : cells.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No hay células configuradas para este curso.</p>
-              <p className="text-sm text-gray-400 mt-2">
-                Contacta al coordinador para configurar las células.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {cells.map((cell) => (
-                <div key={cell.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h5 className="font-medium text-gray-900">{cell.name}</h5>
-                    <div className="text-sm text-gray-500">
-                      Asistente: {cell.assistantEmail} | {cell.studentEmails.length} estudiantes
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {cell.studentEmails.map((studentEmail) => (
-                      studentProgress[studentEmail] && (
-                        <StudentProgressRow
-                          key={studentEmail}
-                          studentEmail={studentEmail}
-                          cellName={cell.name}
-                          courseName={selectedCourse.name}
-                          assignments={studentProgress[studentEmail].assignments}
-                          getStatusColor={getStatusColor}
-                          getStatusText={getStatusText}
-                        />
-                      )
-                    ))}
-                  </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Resumen del Curso: {selectedCourse.name}
+            </h3>
+            
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">{students.length}</div>
+                <div className="text-sm text-blue-600">Estudiantes</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">{cells.length}</div>
+                <div className="text-sm text-green-600">Células</div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-purple-600">{courseWork.length}</div>
+                <div className="text-sm text-purple-600">Tareas</div>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {cells.reduce((sum, cell) => sum + (cell.studentEmails?.length || 0), 0)}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Course Assignments with Status */}
-          {courseWork.length > 0 && (
-            <div className="card">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">
-                Contenido del Curso
-              </h4>
-              
-              <div className="space-y-4">
-                {courseWork.map((assignment) => (
-                  <AssignmentStatusCard
-                    key={assignment.id}
-                    coursework={assignment}
-                    students={students}
-                    courseId={selectedCourse.id}
-                    accessToken={getGoogleAccessToken()}
-                    userRole={role}
-                    onViewDetails={(coursework) => {
-                      // Open coursework in Google Classroom
-                      if (coursework.alternateLink) {
-                        window.open(coursework.alternateLink, '_blank');
-                      }
-                    }}
-                  />
-                ))}
+                <div className="text-sm text-orange-600">Estudiantes Asignados</div>
               </div>
             </div>
-          )}
+
+            {/* Course Info */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Información del Curso</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">ID del Curso:</span>
+                  <span className="ml-2 text-gray-900">{selectedCourse.id}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Estado:</span>
+                  <span className="ml-2 text-green-600 font-medium">Activo</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Sección:</span>
+                  <span className="ml-2 text-gray-900">{selectedCourse.section || 'No especificada'}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Sala:</span>
+                  <span className="ml-2 text-gray-900">{selectedCourse.room || 'No especificada'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Acciones Rápidas</h4>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setActiveTab('participants')}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <span>👥</span>
+                  <span>Ver Participantes</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('cells')}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <span>🧬</span>
+                  <span>Gestionar Células</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('attendance')}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <span>📅</span>
+                  <span>Tomar Asistencia</span>
+                </button>
+                <button
+                  onClick={() => window.open(selectedCourse.alternateLink, '_blank')}
+                  className="btn-secondary flex items-center space-x-2"
+                  disabled={!selectedCourse.alternateLink}
+                >
+                  <span>🔗</span>
+                  <span>Abrir en Classroom</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity Summary */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h4 className="font-medium text-gray-900 mb-4">Estado General</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Células configuradas</span>
+                <span className={`text-sm font-medium ${cells.length > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {cells.length > 0 ? `${cells.length} células activas` : 'Sin células configuradas'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Estudiantes sin asignar</span>
+                <span className={`text-sm font-medium ${
+                  students.length - cells.reduce((sum, cell) => sum + (cell.studentEmails?.length || 0), 0) === 0 
+                    ? 'text-green-600' : 'text-orange-600'
+                }`}>
+                  {students.length - cells.reduce((sum, cell) => sum + (cell.studentEmails?.length || 0), 0)} estudiantes
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Contenido del curso</span>
+                <span className="text-sm font-medium text-blue-600">
+                  {courseWork.length} elementos
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
