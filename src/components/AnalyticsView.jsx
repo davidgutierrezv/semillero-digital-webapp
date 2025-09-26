@@ -20,10 +20,24 @@ const AnalyticsView = ({
   const studentsToAnalyze = role === 'coordinator' && filteredStudents ? filteredStudents : students;
 
   useEffect(() => {
-    if (courseId && studentsToAnalyze.length > 0) {
-      loadAnalyticsData();
+    if (!courseId) {
+      setLoading(false);
+      return;
     }
-  }, [courseId, studentsToAnalyze]);
+
+    // Para estudiantes, siempre cargar datos si hay courseId
+    if (role === 'student') {
+      loadAnalyticsData();
+      return;
+    }
+
+    // Para profesor y coordinador, necesitan lista de estudiantes
+    if (studentsToAnalyze.length > 0) {
+      loadAnalyticsData();
+    } else {
+      setLoading(false);
+    }
+  }, [courseId, studentsToAnalyze, role]);
 
   const loadAnalyticsData = async () => {
     try {
