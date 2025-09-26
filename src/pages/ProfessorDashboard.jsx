@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCourses, getCourseStudents, getCourseWork, getStudentSubmissions } from '../services/googleApi';
+import { getTeacherCourses, getCourseStudents, getCourseWork, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
 import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import AttendanceModule from '../components/AttendanceModule';
 import StudentProgressRow from '../components/StudentProgressRow';
@@ -28,26 +28,16 @@ const ProfessorDashboard = ({ user, role }) => {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const accessToken = await user.accessToken || user.auth?.currentUser?.accessToken;
-      if (!accessToken) {
-        throw new Error('No access token available');
-      }
-
-      const coursesData = await getCourses(accessToken);
+      const accessToken = getGoogleAccessToken();
+      
+      // Only get courses where user is a teacher
+      const coursesData = await getTeacherCourses(accessToken);
       setCourses(coursesData);
-
-      // Sync courses with Firestore
-      for (const course of coursesData) {
-        await createOrUpdateCourse(course.id, {
-          name: course.name,
-          ownerId: course.ownerId
-        });
-      }
-
+      
       if (coursesData.length > 0) {
         setSelectedCourse(coursesData[0]);
+      } else {
+        setSelectedCourse(null);
       }
     } catch (error) {
       console.error('Error loading courses:', error);

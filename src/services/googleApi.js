@@ -205,6 +205,101 @@ export const getAssignments = async (courseId, accessToken) => {
 };
 
 /**
+ * Detect user's primary role across all courses
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Object>} - User role information
+ */
+export const detectUserRole = async (accessToken) => {
+  try {
+    const courses = await getCourses(accessToken);
+    
+    let teacherCourses = 0;
+    let studentCourses = 0;
+    let viewerCourses = 0;
+    const roleDetails = [];
+
+    // Check role in each course
+    for (const course of courses) {
+      try {
+        const role = await getUserRoleInCourse(course.id, accessToken);
+        roleDetails.push({
+          courseId: course.id,
+          courseName: course.name,
+          role: role
+        });
+
+        switch (role) {
+          case 'TEACHER':
+            teacherCourses++;
+            break;
+          case 'STUDENT':
+            studentCourses++;
+            break;
+          default:
+            viewerCourses++;
+        }
+      } catch (error) {
+        console.warn(`Could not determine role for course ${course.name}:`, error);
+      }
+    }
+
+    // Determine primary role
+    let primaryRole = 'STUDENT'; // Default
+    
+    if (teacherCourses > 0) {
+      primaryRole = 'PROFESSOR';
+    } else if (studentCourses > 0) {
+      primaryRole = 'STUDENT';
+    } else if (viewerCourses > 0) {
+      primaryRole = 'VIEWER';
+    }
+
+    // Check if user could be an assistant (student in some courses, teacher-like permissions in others)
+    const couldBeAssistant = studentCourses > 0 && (teacherCourses > 0 || viewerCourses > 0);
+
+    return {
+      primaryRole,
+      couldBeAssistant,
+      statistics: {
+        totalCourses: courses.length,
+        teacherCourses,
+        studentCourses,
+        viewerCourses
+      },
+      roleDetails,
+      courses
+    };
+  } catch (error) {
+    console.error('Error detecting user role:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get courses where user is a teacher
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of courses where user is teacher
+ */
+export const getTeacherCourses = async (accessToken) => {
+  const roleInfo = await detectUserRole(accessToken);
+  return roleInfo.roleDetails
+    .filter(detail => detail.role === 'TEACHER')
+    .map(detail => roleInfo.courses.find(course => course.id === detail.courseId));
+};
+
+/**
+ * Get courses where user is a student
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of courses where user is student
+ */
+export const getStudentCourses = async (accessToken) => {
+  const roleInfo = await detectUserRole(accessToken);
+  return roleInfo.roleDetails
+    .filter(detail => detail.role === 'STUDENT')
+    .map(detail => roleInfo.courses.find(course => course.id === detail.courseId));
+};
+
+/**
  * Get user profile information
  * @param {string} accessToken - The user's access token
  * @returns {Promise<Object>} - User profile object

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCourses, getAssignments, getGoogleAccessToken, getCourseWork, getStudentSubmissions, getUserRoleInCourse } from '../services/googleApi';
+import { getStudentCourses, getAssignments, getGoogleAccessToken, getCourseWork, getStudentSubmissions, getUserRoleInCourse } from '../services/googleApi';
 
 const StudentDashboard = ({ user }) => {
   const [courses, setCourses] = useState([]);
@@ -22,9 +22,9 @@ const StudentDashboard = ({ user }) => {
       console.log('Access token obtained:', accessToken ? 'Yes' : 'No');
 
       // Load courses where the student is enrolled
-      console.log('Loading courses...');
-      const coursesData = await getCourses(accessToken);
-      console.log('Courses loaded:', coursesData.length);
+      console.log('Loading student courses...');
+      const coursesData = await getStudentCourses(accessToken);
+      console.log('Student courses loaded:', coursesData.length);
       setCourses(coursesData);
 
       if (coursesData.length > 0) {

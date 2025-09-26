@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
 import { getUserRole, createOrUpdateUser } from './services/firestore';
 import LoginScreen from './components/LoginScreen';
-import Dashboard from './pages/Dashboard';
+import RoleDetector from './components/RoleDetector';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
@@ -89,8 +89,8 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header user={user} userRole={userRole} />
-      <main className="container mx-auto px-4 py-8 flex-1">
-        <Dashboard user={user} role={userRole} />
+      <main className="flex-1">
+        <RoleDetector user={user} />
       </main>
       <Footer />
     </div>
