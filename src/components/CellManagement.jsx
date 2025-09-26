@@ -3,7 +3,7 @@ import { getCellsForCourse, createCell, updateCell, deleteCell } from '../servic
 import CellCard from './CellCard';
 import CellForm from './CellForm';
 
-const CellManagement = ({ courseId, courseName, students, accessToken }) => {
+const CellManagement = ({ courseId, courseName, students, accessToken, currentUser }) => {
   const [cells, setCells] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -55,12 +55,21 @@ const CellManagement = ({ courseId, courseName, students, accessToken }) => {
 
   const handleSaveCell = async (cellData) => {
     try {
+      // Clean data to avoid undefined values
+      const cleanData = {
+        name: cellData.name || '',
+        description: cellData.description || '',
+        assistantEmail: cellData.assistantEmail || '',
+        assistantName: cellData.assistantName || '',
+        studentEmails: cellData.studentEmails || [],
+        courseId,
+        courseName
+      };
+
       if (editingCell) {
         // Update existing cell
         const updatedCell = await updateCell(editingCell.id, {
-          ...cellData,
-          courseId,
-          courseName,
+          ...cleanData,
           updatedAt: new Date().toISOString()
         });
         setCells(cells.map(cell => 
@@ -69,9 +78,7 @@ const CellManagement = ({ courseId, courseName, students, accessToken }) => {
       } else {
         // Create new cell
         const newCell = await createCell({
-          ...cellData,
-          courseId,
-          courseName,
+          ...cleanData,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -180,6 +187,7 @@ const CellManagement = ({ courseId, courseName, students, accessToken }) => {
           unassignedStudents={getUnassignedStudents()}
           onSave={handleSaveCell}
           onCancel={handleCancelForm}
+          currentUser={currentUser}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel }) => {
+const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, currentUser }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -170,9 +170,24 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel }) => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email del Asistente
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email del Asistente
+                    </label>
+                    {currentUser && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ 
+                          ...prev, 
+                          assistantEmail: currentUser.email,
+                          assistantName: currentUser.displayName || currentUser.email
+                        }))}
+                        className="text-xs text-primary-600 hover:text-primary-700"
+                      >
+                        Asignarme a mí
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="email"
                     value={formData.assistantEmail}

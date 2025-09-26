@@ -422,6 +422,7 @@ const ProfessorDashboard = ({ user, role }) => {
           courseName={selectedCourse.name}
           students={students}
           accessToken={getGoogleAccessToken()}
+          currentUser={user}
         />
       )}
 
