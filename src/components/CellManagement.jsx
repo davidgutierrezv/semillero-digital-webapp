@@ -55,16 +55,27 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
 
   const handleSaveCell = async (cellData) => {
     try {
-      // Clean data to avoid undefined values
+      console.log('Raw cellData:', cellData); // Debug log
+      
+      // Clean data to avoid undefined values - be more thorough
       const cleanData = {
-        name: cellData.name || '',
-        description: cellData.description || '',
-        assistantEmail: cellData.assistantEmail || '',
-        assistantName: cellData.assistantName || '',
-        studentEmails: cellData.studentEmails || [],
-        courseId,
-        courseName
+        name: String(cellData.name || '').trim(),
+        description: String(cellData.description || '').trim(),
+        assistantEmail: String(cellData.assistantEmail || '').trim(),
+        assistantName: String(cellData.assistantName || '').trim(),
+        studentEmails: Array.isArray(cellData.studentEmails) ? cellData.studentEmails.filter(email => email && email.trim()) : [],
+        courseId: String(courseId || ''),
+        courseName: String(courseName || '')
       };
+      
+      // Remove any remaining undefined or null values
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined || cleanData[key] === null) {
+          cleanData[key] = '';
+        }
+      });
+      
+      console.log('Clean data:', cleanData); // Debug log
 
       if (editingCell) {
         // Update existing cell

@@ -50,7 +50,15 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
 
     setSaving(true);
     try {
-      await onSave(formData);
+      // Only send the fields we need
+      const dataToSave = {
+        name: formData.name,
+        description: formData.description,
+        assistantEmail: formData.assistantEmail,
+        assistantName: formData.assistantName,
+        studentEmails: formData.studentEmails
+      };
+      await onSave(dataToSave);
     } catch (error) {
       console.error('Error saving cell:', error);
     } finally {
