@@ -3,37 +3,57 @@ import { detectUserRole, getGoogleAccessToken } from '../services/googleApi';
 import StudentDashboard from '../pages/StudentDashboard';
 import ProfessorDashboard from '../pages/ProfessorDashboard';
 import AssistantDashboard from '../pages/AssistantDashboard';
+import RoleSelector from './RoleSelector';
 
 const RoleDetector = ({ user }) => {
   const [userRole, setUserRole] = useState(null);
   const [roleInfo, setRoleInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [showRoleSelector, setShowRoleSelector] = useState(true);
   const [manualRoleOverride, setManualRoleOverride] = useState(null);
 
   useEffect(() => {
-    detectRole();
+    // Check if user has a previously selected role
+    const savedRole = localStorage.getItem('selectedRole');
+    if (savedRole) {
+      // Validate the saved role is still valid
+      validateSavedRole(savedRole);
+    }
   }, [user]);
 
-  const detectRole = async () => {
+  const validateSavedRole = async (savedRole) => {
     try {
-      setLoading(true);
-      setError(null);
-
       const accessToken = getGoogleAccessToken();
       const roleData = await detectUserRole(accessToken);
       
-      console.log('Role detection result:', roleData);
+      // Check if saved role is still valid
+      const isValid = await validateRoleAccess(savedRole, roleData);
       
-      setRoleInfo(roleData);
-      setUserRole(roleData.primaryRole);
-      
+      if (isValid) {
+        setUserRole(savedRole);
+        setRoleInfo(roleData);
+        setShowRoleSelector(false);
+      } else {
+        // Remove invalid saved role
+        localStorage.removeItem('selectedRole');
+        setShowRoleSelector(true);
+      }
     } catch (error) {
-      console.error('Error detecting user role:', error);
-      setError('Error al detectar el rol del usuario. Usando rol por defecto.');
-      setUserRole('STUDENT'); // Default fallback
-    } finally {
-      setLoading(false);
+      console.error('Error validating saved role:', error);
+      localStorage.removeItem('selectedRole');
+      setShowRoleSelector(true);
+    }
+  };
+
+  const validateRoleAccess = (roleId, roleData) => {
+    switch (roleId) {
+      case 'STUDENT':
+        return roleData.statistics.studentCourses > 0;
+      case 'PROFESSOR':
+        return roleData.statistics.teacherCourses > 0;
+      case 'ASSISTANT':
+        return roleData.statistics.teacherCourses > 0;
+      default:
+        return false;
     }
   };
 
@@ -41,97 +61,62 @@ const RoleDetector = ({ user }) => {
     setManualRoleOverride(newRole);
   };
 
+  const handleRoleSelected = (selectedRole, roleData) => {
+    setUserRole(selectedRole);
+    setRoleInfo(roleData);
+    setShowRoleSelector(false);
+  };
+
+  const handleChangeRole = () => {
+    localStorage.removeItem('selectedRole');
+    setShowRoleSelector(true);
+    setManualRoleOverride(null);
+  };
+
   const getCurrentRole = () => {
     return manualRoleOverride || userRole;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Detectando tu rol en el sistema...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !userRole) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="text-red-500 text-4xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error de Detección</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={detectRole}
-            className="btn-primary"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
-    );
+  // Show role selector if needed
+  if (showRoleSelector) {
+    return <RoleSelector user={user} onRoleSelected={handleRoleSelected} />;
   }
 
   const currentRole = getCurrentRole();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Role Selector Header */}
-      {roleInfo && (roleInfo.couldBeAssistant || roleInfo.statistics.teacherCourses > 0) && (
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-gray-700">Vista actual:</span>
-              <div className="flex space-x-2">
-                {roleInfo.statistics.teacherCourses > 0 && (
-                  <button
-                    onClick={() => handleRoleOverride('PROFESSOR')}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                      currentRole === 'PROFESSOR'
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    👨‍🏫 Profesor ({roleInfo.statistics.teacherCourses})
-                  </button>
-                )}
-                
-                {roleInfo.couldBeAssistant && (
-                  <button
-                    onClick={() => handleRoleOverride('ASSISTANT')}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                      currentRole === 'ASSISTANT'
-                        ? 'bg-green-100 text-green-800 border border-green-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    👥 Asistente
-                  </button>
-                )}
-                
-                {roleInfo.statistics.studentCourses > 0 && (
-                  <button
-                    onClick={() => handleRoleOverride('STUDENT')}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                      currentRole === 'STUDENT'
-                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    🎓 Estudiante ({roleInfo.statistics.studentCourses})
-                  </button>
-                )}
+      {/* Role Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">
+                {currentRole === 'PROFESSOR' && '👨‍🏫'}
+                {currentRole === 'ASSISTANT' && '👥'}
+                {currentRole === 'STUDENT' && '🎓'}
+              </span>
+              <div>
+                <span className="text-sm font-medium text-gray-700">
+                  {currentRole === 'PROFESSOR' && 'Vista de Profesor'}
+                  {currentRole === 'ASSISTANT' && 'Vista de Asistente'}
+                  {currentRole === 'STUDENT' && 'Vista de Estudiante'}
+                </span>
+                <div className="text-xs text-gray-500">
+                  {roleInfo && `${roleInfo.statistics.totalCourses} curso(s) total`}
+                </div>
               </div>
             </div>
-            
-            <div className="text-xs text-gray-500">
-              Total de cursos: {roleInfo.statistics.totalCourses}
-            </div>
           </div>
+          
+          <button
+            onClick={handleChangeRole}
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            Cambiar rol
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Dashboard Content */}
       {currentRole === 'PROFESSOR' && (

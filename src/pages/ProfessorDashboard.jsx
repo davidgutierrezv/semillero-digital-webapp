@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getTeacherCourses, getCourseStudents, getCourseWork, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
+import { getTeacherCourses, getCourseStudents, getCourseWorkDetailed, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
 import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import AttendanceModule from '../components/AttendanceModule';
 import StudentProgressRow from '../components/StudentProgressRow';
+import AssignmentStatusCard from '../components/AssignmentStatusCard';
 
 const ProfessorDashboard = ({ user, role }) => {
   const [courses, setCourses] = useState([]);
@@ -50,13 +51,13 @@ const ProfessorDashboard = ({ user, role }) => {
   const loadCourseData = async (courseId) => {
     try {
       setLoading(true);
-      const accessToken = await user.accessToken || user.auth?.currentUser?.accessToken;
+      const accessToken = getGoogleAccessToken();
       
       // Load course data in parallel
       const [cellsData, studentsData, courseWorkData] = await Promise.all([
         getCellsForCourse(courseId),
         getCourseStudents(courseId, accessToken),
-        getCourseWork(courseId, accessToken)
+        getCourseWorkDetailed(courseId, accessToken)
       ]);
 
       setCells(cellsData);
@@ -338,6 +339,34 @@ const ProfessorDashboard = ({ user, role }) => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Course Assignments with Status */}
+      {selectedCourse && courseWork.length > 0 && (
+        <div className="card">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">
+            Estado de las Tareas
+          </h4>
+          
+          <div className="space-y-4">
+            {courseWork.map((assignment) => (
+              <AssignmentStatusCard
+                key={assignment.id}
+                coursework={assignment}
+                students={students}
+                courseId={selectedCourse.id}
+                accessToken={getGoogleAccessToken()}
+                userRole={role}
+                onViewDetails={(coursework) => {
+                  // Open coursework in Google Classroom
+                  if (coursework.alternateLink) {
+                    window.open(coursework.alternateLink, '_blank');
+                  }
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

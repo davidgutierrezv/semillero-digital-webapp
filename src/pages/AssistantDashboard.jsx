@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { getCellsForAssistant } from '../services/firestore';
-import { getCourseWork, getStudentSubmissions } from '../services/googleApi';
+import { getTeacherCourses, getCourseStudents, getCourseWorkDetailed, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
+import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import StudentProgressRow from '../components/StudentProgressRow';
+import AssignmentStatusCard from '../components/AssignmentStatusCard';
 
-const AssistantDashboard = ({ user }) => {
+const AssistantDashboard = ({ user, role, roleInfo }) => {
+  const [courses, setCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [students, setStudents] = useState([]);
   const [cells, setCells] = useState([]);
+  const [courseWork, setCourseWork] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
@@ -18,12 +23,16 @@ const AssistantDashboard = ({ user }) => {
       setLoading(true);
       setError(null);
 
-      // Get cells assigned to this assistant
-      const assistantCells = await getCellsForAssistant(user.email);
-      setCells(assistantCells);
-
-      // Load progress for each student in each cell
-      await loadStudentProgress(assistantCells);
+      const accessToken = getGoogleAccessToken();
+      
+      // Get courses where user is a teacher (but show assistant view)
+      const coursesData = await getTeacherCourses(accessToken);
+      setCourses(coursesData);
+      
+      if (coursesData.length > 0) {
+        setSelectedCourse(coursesData[0]);
+        await loadCourseData(coursesData[0].id);
+      }
     } catch (error) {
       console.error('Error loading assistant data:', error);
       setError('Error al cargar los datos. Por favor, intenta de nuevo.');
@@ -32,7 +41,30 @@ const AssistantDashboard = ({ user }) => {
     }
   };
 
-  const loadStudentProgress = async (cellsData) => {
+  const loadCourseData = async (courseId) => {
+    try {
+      const accessToken = getGoogleAccessToken();
+      
+      // Load students, cells, and coursework for the course
+      const [studentsData, cellsData, courseWorkData] = await Promise.all([
+        getCourseStudents(courseId, accessToken),
+        getCellsForCourse(courseId),
+        getCourseWorkDetailed(courseId, accessToken)
+      ]);
+      
+      setStudents(studentsData);
+      setCells(cellsData);
+      setCourseWork(courseWorkData);
+      
+      // Load progress for students
+      await loadStudentProgress(studentsData, courseId);
+    } catch (error) {
+      console.error('Error loading course data:', error);
+      setError('Error al cargar los datos del curso.');
+    }
+  };
+
+  const loadStudentProgress = async (studentsData, courseId) => {
     const accessToken = await user.accessToken || user.auth?.currentUser?.accessToken;
     if (!accessToken) {
       console.error('No access token available');
@@ -226,6 +258,34 @@ const AssistantDashboard = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* Course Assignments Status */}
+      {selectedCourse && courseWork.length > 0 && (
+        <div className="card">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">
+            Estado de las Tareas - {selectedCourse.name}
+          </h4>
+          
+          <div className="space-y-4">
+            {courseWork.map((assignment) => (
+              <AssignmentStatusCard
+                key={assignment.id}
+                coursework={assignment}
+                students={students}
+                courseId={selectedCourse.id}
+                accessToken={getGoogleAccessToken()}
+                userRole="ASSISTANT"
+                onViewDetails={(coursework) => {
+                  // Open coursework in Google Classroom
+                  if (coursework.alternateLink) {
+                    window.open(coursework.alternateLink, '_blank');
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

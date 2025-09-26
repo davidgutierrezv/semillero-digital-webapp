@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getStudentCourses, getAssignments, getGoogleAccessToken, getCourseWork, getStudentSubmissions, getUserRoleInCourse } from '../services/googleApi';
+import { getStudentCourses, getAssignments, getGoogleAccessToken, getCourseWorkDetailed, getStudentSubmissions, getUserRoleInCourse, getCourseMaterials, getCourseTopics } from '../services/googleApi';
+import AssignmentStatusCard from '../components/AssignmentStatusCard';
 
 const StudentDashboard = ({ user }) => {
   const [courses, setCourses] = useState([]);
@@ -29,14 +30,57 @@ const StudentDashboard = ({ user }) => {
 
       if (coursesData.length > 0) {
         setSelectedCourse(coursesData[0]);
-        const assignmentsData = await getAssignments(coursesData[0].id, accessToken);
-        setAssignments(assignmentsData);
+        await loadCourseAssignments(coursesData[0].id, accessToken);
       }
     } catch (error) {
       console.error('Error loading student data:', error);
       setError('Error al cargar los datos del estudiante. Por favor, intenta de nuevo.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCourseAssignments = async (courseId, accessToken) => {
+    try {
+      console.log('Loading detailed coursework for course:', courseId);
+      
+      // Get detailed coursework with enhanced information
+      const detailedCoursework = await getCourseWorkDetailed(courseId, accessToken);
+      console.log('Detailed coursework loaded:', detailedCoursework.length);
+      
+      // For each coursework, try to get submission status
+      const assignmentsWithStatus = await Promise.all(
+        detailedCoursework.map(async (assignment) => {
+          try {
+            const submissions = await getStudentSubmissions(courseId, assignment.id, accessToken);
+            const userSubmission = submissions.find(sub => sub.userId === 'me') || submissions[0];
+            
+            return {
+              ...assignment,
+              submissionStatus: userSubmission?.state || 'NOT_SUBMITTED',
+              grade: userSubmission?.assignedGrade,
+              submissionHistory: userSubmission?.submissionHistory || [],
+              isAssigned: true
+            };
+          } catch (submissionError) {
+            console.warn(`Error getting submissions for assignment ${assignment.id}:`, submissionError.message);
+            
+            return {
+              ...assignment,
+              submissionStatus: submissionError.message.includes('403') ? 'NOT_ASSIGNED' : 'ERROR',
+              grade: null,
+              submissionHistory: [],
+              isAssigned: !submissionError.message.includes('403')
+            };
+          }
+        })
+      );
+      
+      setAssignments(assignmentsWithStatus);
+      
+    } catch (error) {
+      console.error('Error loading course assignments:', error);
+      setError('Error al cargar las tareas del curso.');
     }
   };
 
@@ -197,8 +241,7 @@ const StudentDashboard = ({ user }) => {
             if (course) {
               try {
                 const accessToken = getGoogleAccessToken();
-                const assignmentsData = await getAssignments(course.id, accessToken);
-                setAssignments(assignmentsData);
+                await loadCourseAssignments(course.id, accessToken);
                 
                 // Clear any previous error if assignments loaded successfully
                 if (error) setError(null);
@@ -302,65 +345,20 @@ const StudentDashboard = ({ user }) => {
         ) : (
           <div className="space-y-4">
             {assignments.map((assignment) => (
-              <div 
-                key={assignment.id} 
-                className={`border rounded-lg p-4 hover:shadow-md transition-shadow duration-200 ${getStatusColor(assignment.submissionStatus)}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-lg">{getStatusIcon(assignment.submissionStatus)}</span>
-                      <h5 className="font-medium text-gray-900">{assignment.title}</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(assignment.submissionStatus)}`}>
-                        {getStatusText(assignment.submissionStatus)}
-                      </span>
-                    </div>
-                    
-                    {assignment.description && (
-                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                        {assignment.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>
-                        📅 {formatDueDate(assignment.dueDate)}
-                      </span>
-                      {assignment.maxPoints && (
-                        <span>
-                          📊 {assignment.maxPoints} puntos
-                        </span>
-                      )}
-                      {assignment.submission?.assignedGrade && (
-                        <span className="font-medium text-green-600">
-                          ✅ Calificación: {assignment.submission.assignedGrade}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="ml-4">
-                    {assignment.alternateLink && (
-                      <a
-                        href={assignment.alternateLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary text-sm"
-                      >
-                        Ver en Classroom
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {assignment.submission?.submissionHistory && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-xs text-gray-500">
-                      Última entrega: {new Date(assignment.submission.updateTime).toLocaleDateString('es-ES')}
-                    </p>
-                  </div>
-                )}
-              </div>
+              <AssignmentStatusCard
+                key={assignment.id}
+                coursework={assignment}
+                students={[]}
+                courseId={selectedCourse?.id}
+                accessToken={getGoogleAccessToken()}
+                userRole="STUDENT"
+                onViewDetails={(coursework) => {
+                  // Open coursework in Google Classroom
+                  if (coursework.alternateLink) {
+                    window.open(coursework.alternateLink, '_blank');
+                  }
+                }}
+              />
             ))}
           </div>
         )}

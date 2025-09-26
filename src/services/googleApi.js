@@ -95,6 +95,41 @@ export const getUserRoleInCourse = async (courseId, accessToken) => {
 };
 
 /**
+ * Get detailed coursework information including materials and assignments
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of detailed coursework objects
+ */
+export const getCourseWorkDetailed = async (courseId, accessToken) => {
+  try {
+    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/courseWork`;
+    const data = await fetchGoogleApi(url, accessToken);
+    const coursework = data.courseWork || [];
+    
+    // Enrich each coursework with detailed information
+    const detailedCoursework = coursework.map(work => {
+      const workType = determineWorkType(work);
+      return {
+        ...work,
+        workType,
+        typeIcon: getWorkTypeIcon(workType),
+        typeColor: getWorkTypeColor(workType),
+        hasAttachments: work.materials && work.materials.length > 0,
+        attachmentCount: work.materials ? work.materials.length : 0,
+        isQuiz: workType === 'QUIZ',
+        hasRubric: work.associatedWithDeveloper || false,
+        formattedDueDate: work.dueDate ? formatDueDate(work.dueDate, work.dueTime) : null
+      };
+    });
+    
+    return detailedCoursework;
+  } catch (error) {
+    console.error('Error getting detailed coursework:', error);
+    throw error;
+  }
+};
+
+/**
  * Get all coursework (assignments) for a specific course
  * @param {string} courseId - The course ID
  * @param {string} accessToken - The user's access token
@@ -117,6 +152,120 @@ export const getCourseWork = async (courseId, accessToken) => {
     }
     throw error;
   }
+};
+
+/**
+ * Get course materials (announcements, topics)
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of course materials
+ */
+export const getCourseMaterials = async (courseId, accessToken) => {
+  try {
+    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/announcements`;
+    const data = await fetchGoogleApi(url, accessToken);
+    return data.announcements || [];
+  } catch (error) {
+    console.error('Error getting course materials:', error);
+    return [];
+  }
+};
+
+/**
+ * Get course topics
+ * @param {string} courseId - The course ID
+ * @param {string} accessToken - The user's access token
+ * @returns {Promise<Array>} - Array of course topics
+ */
+export const getCourseTopics = async (courseId, accessToken) => {
+  try {
+    const url = `${BASE_CLASSROOM_URL}/courses/${courseId}/topics`;
+    const data = await fetchGoogleApi(url, accessToken);
+    return data.topic || [];
+  } catch (error) {
+    console.error('Error getting course topics:', error);
+    return [];
+  }
+};
+
+/**
+ * Determine the type of coursework based on its properties
+ * @param {Object} work - Coursework object
+ * @returns {string} - Work type
+ */
+const determineWorkType = (work) => {
+  if (work.assignmentSubmission) {
+    return 'ASSIGNMENT';
+  } else if (work.shortAnswerSubmission) {
+    return 'SHORT_ANSWER';
+  } else if (work.multipleChoiceSubmission) {
+    return 'MULTIPLE_CHOICE';
+  } else if (work.materials && work.materials.some(m => m.form)) {
+    return 'QUIZ';
+  } else if (work.materials && work.materials.length > 0) {
+    return 'MATERIAL';
+  } else {
+    return 'TOPIC';
+  }
+};
+
+/**
+ * Get icon for work type
+ * @param {string} workType - Type of work
+ * @returns {string} - Icon emoji
+ */
+const getWorkTypeIcon = (workType) => {
+  const icons = {
+    'ASSIGNMENT': '📝',
+    'SHORT_ANSWER': '✏️',
+    'MULTIPLE_CHOICE': '☑️',
+    'QUIZ': '📋',
+    'MATERIAL': '📎',
+    'TOPIC': '📚'
+  };
+  return icons[workType] || '📄';
+};
+
+/**
+ * Get color class for work type
+ * @param {string} workType - Type of work
+ * @returns {string} - CSS color classes
+ */
+const getWorkTypeColor = (workType) => {
+  const colors = {
+    'ASSIGNMENT': 'bg-blue-50 text-blue-700 border-blue-200',
+    'SHORT_ANSWER': 'bg-green-50 text-green-700 border-green-200',
+    'MULTIPLE_CHOICE': 'bg-purple-50 text-purple-700 border-purple-200',
+    'QUIZ': 'bg-orange-50 text-orange-700 border-orange-200',
+    'MATERIAL': 'bg-gray-50 text-gray-700 border-gray-200',
+    'TOPIC': 'bg-indigo-50 text-indigo-700 border-indigo-200'
+  };
+  return colors[workType] || 'bg-gray-50 text-gray-700 border-gray-200';
+};
+
+/**
+ * Format due date for display
+ * @param {Object} dueDate - Due date object
+ * @param {Object} dueTime - Due time object
+ * @returns {string} - Formatted date string
+ */
+const formatDueDate = (dueDate, dueTime) => {
+  if (!dueDate) return null;
+  
+  const date = new Date(dueDate.year, dueDate.month - 1, dueDate.day);
+  
+  if (dueTime) {
+    date.setHours(dueTime.hours || 23, dueTime.minutes || 59);
+  }
+  
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: dueTime ? '2-digit' : undefined,
+    minute: dueTime ? '2-digit' : undefined
+  });
 };
 
 /**
