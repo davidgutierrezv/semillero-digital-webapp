@@ -1,5 +1,5 @@
 /**
- * Utility functions for handling student data from Google Classroom API
+ * Utility functions for handling student and teacher data from Google Classroom API
  */
 
 /**
@@ -110,4 +110,50 @@ export const getUnassignedStudents = (students, assignedEmails) => {
     const studentEmail = getStudentEmail(student);
     return studentEmail && !assignedEmails.includes(studentEmail);
   });
+};
+
+/**
+ * Extract email address from a teacher object
+ * Similar to getStudentEmail but for teachers
+ * 
+ * @param {Object} teacher - Teacher object from Google Classroom API
+ * @returns {string|null} - Email address or null if not found
+ */
+export const getTeacherEmail = (teacher) => {
+  if (!teacher) return null;
+  
+  const email = teacher.profile?.emailAddress || 
+                teacher.emailAddress || 
+                teacher.profile?.id || 
+                null;
+                
+  return email;
+};
+
+/**
+ * Extract teacher name from a teacher object
+ * 
+ * @param {Object} teacher - Teacher object from Google Classroom API
+ * @returns {string} - Teacher name or email as fallback
+ */
+export const getTeacherName = (teacher) => {
+  if (!teacher) return 'Unknown Teacher';
+  
+  const name = teacher.profile?.name?.fullName || 
+               teacher.profile?.emailAddress || 
+               teacher.emailAddress || 
+               teacher.profile?.id || 
+               'Unknown Teacher';
+               
+  return name;
+};
+
+/**
+ * Get unique identifier for a teacher (for React keys, etc.)
+ * 
+ * @param {Object} teacher - Teacher object from Google Classroom API
+ * @returns {string} - Unique identifier for the teacher
+ */
+export const getTeacherId = (teacher) => {
+  return getTeacherEmail(teacher) || `teacher-${teacher.userId || Math.random()}`;
 };

@@ -4,7 +4,7 @@ import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentU
 import CellCard from './CellCard';
 import CellForm from './CellForm';
 
-const CellManagement = ({ courseId, courseName, students, accessToken, currentUser }) => {
+const CellManagement = ({ courseId, courseName, students, teachers, accessToken, currentUser }) => {
   console.log('CellManagement - Students received:', students);
   const [cells, setCells] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -200,6 +200,7 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
         <CellForm
           cell={editingCell}
           students={students}
+          teachers={teachers}
           unassignedStudents={getUnassignedStudents()}
           onSave={handleSaveCell}
           onCancel={handleCancelForm}

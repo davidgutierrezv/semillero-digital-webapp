@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTeacherCourses, getCourseStudents, getAllCourseContent, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
+import { getTeacherCourses, getCourseStudents, getCourseTeachers, getAllCourseContent, getStudentSubmissions, getGoogleAccessToken } from '../services/googleApi';
 import { getCellsForCourse, createOrUpdateCourse } from '../services/firestore';
 import AttendanceModule from '../components/AttendanceModule';
 import StudentProgressRow from '../components/StudentProgressRow';
@@ -13,6 +13,7 @@ const ProfessorDashboard = ({ user, role }) => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [cells, setCells] = useState([]);
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [courseWork, setCourseWork] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,14 +58,16 @@ const ProfessorDashboard = ({ user, role }) => {
       const accessToken = getGoogleAccessToken();
       
       // Load course data in parallel
-      const [cellsData, studentsData, courseWorkData] = await Promise.all([
+      const [cellsData, studentsData, teachersData, courseWorkData] = await Promise.all([
         getCellsForCourse(courseId),
         getCourseStudents(courseId, accessToken),
+        getCourseTeachers(courseId, accessToken),
         getAllCourseContent(courseId, accessToken)
       ]);
 
       setCells(cellsData);
       setStudents(studentsData);
+      setTeachers(teachersData);
       setCourseWork(courseWorkData);
 
       // Group students by cells and load their progress
@@ -462,6 +465,7 @@ const ProfessorDashboard = ({ user, role }) => {
           courseId={selectedCourse.id}
           courseName={selectedCourse.name}
           students={students}
+          teachers={teachers}
           accessToken={getGoogleAccessToken()}
           currentUser={user}
         />

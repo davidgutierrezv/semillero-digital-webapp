@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getStudentEmail, getStudentName, getStudentId } from '../utils/studentUtils';
+import { getStudentEmail, getStudentName, getStudentId, getTeacherEmail, getTeacherName, getTeacherId } from '../utils/studentUtils';
 
-const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, currentUser }) => {
+const CellForm = ({ cell, students, teachers, unassignedStudents, onSave, onCancel, currentUser }) => {
+  console.log('CellForm - Teachers received:', teachers);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -173,6 +175,26 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
     }));
   };
 
+  const handleTeacherSelect = (teacherEmail) => {
+    if (!teacherEmail) {
+      setFormData(prev => ({
+        ...prev,
+        assistantEmail: '',
+        assistantName: ''
+      }));
+      return;
+    }
+
+    const selectedTeacher = teachers.find(teacher => getTeacherEmail(teacher) === teacherEmail);
+    if (selectedTeacher) {
+      setFormData(prev => ({
+        ...prev,
+        assistantEmail: teacherEmail,
+        assistantName: getTeacherName(selectedTeacher)
+      }));
+    }
+  };
+
   // Get available students (unassigned + currently assigned to this cell if editing)
   const getAvailableStudents = () => {
     if (cell) {
@@ -256,52 +278,71 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-900">Asistente</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Email del Asistente
-                    </label>
-                    {currentUser && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ 
-                          ...prev, 
-                          assistantEmail: currentUser.email,
-                          assistantName: currentUser.displayName || currentUser.email
-                        }))}
-                        className="text-xs text-primary-600 hover:text-primary-700"
-                      >
-                        Asignarme a mí
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="email"
-                    value={formData.assistantEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, assistantEmail: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="asistente@ejemplo.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre del Asistente
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Seleccionar Profesor como Asistente
                   </label>
-                  <input
-                    type="text"
-                    value={formData.assistantName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, assistantName: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.assistantName ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Nombre completo"
-                  />
-                  {errors.assistantName && (
-                    <p className="text-red-600 text-sm mt-1">{errors.assistantName}</p>
+                  {currentUser && (
+                    <button
+                      type="button"
+                      onClick={() => handleTeacherSelect(currentUser.email)}
+                      className="text-xs text-primary-600 hover:text-primary-700"
+                    >
+                      Asignarme a mí
+                    </button>
                   )}
                 </div>
+                
+                <select
+                  value={formData.assistantEmail}
+                  onChange={(e) => handleTeacherSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Seleccionar profesor...</option>
+                  {teachers && teachers.length > 0 ? (
+                    teachers.map((teacher) => {
+                      const teacherEmail = getTeacherEmail(teacher);
+                      const teacherName = getTeacherName(teacher);
+                      
+                      if (!teacherEmail) return null;
+                      
+                      return (
+                        <option key={getTeacherId(teacher)} value={teacherEmail}>
+                          {teacherName} ({teacherEmail})
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option disabled>No hay profesores disponibles</option>
+                  )}
+                </select>
+                
+                {(!teachers || teachers.length === 0) && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    ℹ️ No se encontraron profesores en este curso. Verifica que el curso tenga profesores asignados en Google Classroom.
+                  </p>
+                )}
+                
+                {formData.assistantEmail && formData.assistantName && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-medium text-sm">
+                          {formData.assistantName.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-blue-900">{formData.assistantName}</p>
+                        <p className="text-sm text-blue-700">{formData.assistantEmail}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {errors.assistantName && (
+                  <p className="text-red-600 text-sm mt-1">{errors.assistantName}</p>
+                )}
               </div>
             </div>
 
