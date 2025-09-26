@@ -39,8 +39,13 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 Loading attendance for date:', selectedDate);
+      console.log('🔍 Course ID:', courseId);
+
       // Cargar asistencia existente para la fecha seleccionada
       const records = await getAttendanceRecords(courseId, selectedDate);
+      console.log('🔍 Records found:', records.length, records);
+      
       const attendanceMap = {};
       
       // Inicializar todos los estudiantes como presentes
@@ -53,9 +58,11 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
       
       // Sobrescribir con datos existentes
       records.forEach(record => {
+        console.log('🔍 Processing record:', record);
         attendanceMap[record.studentEmail] = record.status;
       });
 
+      console.log('🔍 Final attendance map:', attendanceMap);
       setAttendance(attendanceMap);
     } catch (error) {
       console.error('Error loading attendance for date:', error);
@@ -67,7 +74,10 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
 
   const loadAttendanceHistory = async () => {
     try {
+      console.log('📋 Loading attendance history for course:', courseId);
       const history = await getAttendanceRecords(courseId);
+      console.log('📋 History loaded:', history.length, 'records');
+      console.log('📋 History data:', history);
       setAttendanceHistory(history);
     } catch (error) {
       console.error('Error loading attendance history:', error);
@@ -115,6 +125,9 @@ const AttendanceModule = ({ courseId, courseName, students, user }) => {
             recordedBy: user.email,
             recordedAt: new Date().toISOString()
           };
+          
+          console.log('💾 Saving attendance data:', attendanceData);
+          console.log('💾 Document ID:', `${selectedDate}_${studentEmail}`);
           
           savePromises.push(
             saveToFirestore(courseId, `${selectedDate}_${studentEmail}`, attendanceData)

@@ -162,19 +162,34 @@ export const getCellsForAssistant = async (assistantEmail) => {
 /**
  * Save attendance record for a class
  * @param {string} courseId - The course ID
- * @param {string} eventId - The calendar event ID
+ * @param {string} recordId - The record ID
  * @param {Object} attendanceData - Attendance data object
  * @returns {Promise<void>}
  */
-export const saveAttendanceRecord = async (courseId, eventId, attendanceData) => {
+export const saveAttendanceRecord = async (courseId, recordId, attendanceData) => {
   try {
-    const attendanceRef = doc(db, 'courses', courseId, 'attendance', eventId);
-    await setDoc(attendanceRef, {
+    console.log('💾 Firestore: Saving attendance record');
+    console.log('💾 Course ID:', courseId);
+    console.log('💾 Record ID:', recordId);
+    console.log('💾 Data:', attendanceData);
+    
+    const attendanceRef = doc(db, 'courses', courseId, 'attendance', recordId);
+    const dataToSave = {
       ...attendanceData,
       updatedAt: serverTimestamp()
-    }, { merge: true });
+    };
+    
+    console.log('💾 Firestore: Document path:', attendanceRef.path);
+    await setDoc(attendanceRef, dataToSave, { merge: true });
+    console.log('✅ Firestore: Attendance record saved successfully');
   } catch (error) {
-    console.error('Error saving attendance record:', error);
+    console.error('🚨 Firestore Error saving attendance record:', error);
+    console.error('🚨 Save error details:', {
+      code: error.code,
+      message: error.message,
+      courseId,
+      recordId
+    });
     throw error;
   }
 };
@@ -182,16 +197,51 @@ export const saveAttendanceRecord = async (courseId, eventId, attendanceData) =>
 /**
  * Get attendance records for a course
  * @param {string} courseId - The course ID
+ * @param {string} date - Optional specific date to filter by (YYYY-MM-DD format)
  * @returns {Promise<Array>} - Array of attendance records
  */
-export const getAttendanceRecords = async (courseId) => {
+export const getAttendanceRecords = async (courseId, date = null) => {
   try {
+    console.log('🔍 Firestore: Getting attendance records for course:', courseId, 'date:', date);
     const attendanceRef = collection(db, 'courses', courseId, 'attendance');
-    const attendanceQuery = query(attendanceRef, orderBy('eventDate', 'desc'));
-    const snapshot = await getDocs(attendanceQuery);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    let snapshot;
+    if (date) {
+      // Filter by specific date - use simple query first
+      console.log('🔍 Firestore: Querying by date:', date);
+      const dateQuery = query(attendanceRef, where('date', '==', date));
+      snapshot = await getDocs(dateQuery);
+    } else {
+      // Get all records
+      console.log('🔍 Firestore: Getting all records');
+      snapshot = await getDocs(attendanceRef);
+    }
+    
+    const records = snapshot.docs.map(doc => {
+      const data = { id: doc.id, ...doc.data() };
+      console.log('🔍 Firestore: Found record:', data);
+      return data;
+    });
+    
+    // Sort manually
+    const sortedRecords = records.sort((a, b) => {
+      if (a.date !== b.date) {
+        return new Date(b.date) - new Date(a.date);
+      }
+      return new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0);
+    });
+    
+    console.log('🔍 Firestore: Returning', sortedRecords.length, 'sorted records');
+    return sortedRecords;
+    
   } catch (error) {
-    console.error('Error getting attendance records:', error);
+    console.error('🚨 Firestore Error getting attendance records:', error);
+    console.error('🚨 Error details:', {
+      code: error.code,
+      message: error.message,
+      courseId,
+      date
+    });
     throw error;
   }
 };

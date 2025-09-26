@@ -18,7 +18,6 @@ const ProfessorDashboard = ({ user, role }) => {
   const [error, setError] = useState(null);
   const [studentProgress, setStudentProgress] = useState({});
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'cells', 'attendance', 'participants', 'progress'
-  const [showAttendance, setShowAttendance] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -266,15 +265,6 @@ const ProfessorDashboard = ({ user, role }) => {
         </select>
       </div>
 
-      {/* Attendance Module */}
-      {showAttendance && selectedCourse && (
-        <AttendanceModule 
-          courseId={selectedCourse.id}
-          courseName={selectedCourse.name}
-          students={students}
-          user={user}
-        />
-      )}
 
       {/* Course Tabs */}
       {selectedCourse && (
