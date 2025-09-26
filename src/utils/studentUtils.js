@@ -50,11 +50,22 @@ export const getStudentEmail = (student) => {
 export const getStudentName = (student) => {
   if (!student) return 'Unknown Student';
   
-  return student.profile?.name?.fullName || 
-         student.profile?.emailAddress || 
-         student.emailAddress || 
-         student.profile?.id || 
-         'Unknown Student';
+  console.log('getStudentName - input student:', student);
+  console.log('getStudentName - available fields:', {
+    fullName: student.profile?.name?.fullName,
+    profileEmail: student.profile?.emailAddress,
+    directEmail: student.emailAddress,
+    profileId: student.profile?.id
+  });
+  
+  const name = student.profile?.name?.fullName || 
+               student.profile?.emailAddress || 
+               student.emailAddress || 
+               student.profile?.id || 
+               'Unknown Student';
+               
+  console.log('getStudentName - final name:', name);
+  return name;
 };
 
 /**

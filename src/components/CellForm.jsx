@@ -7,7 +7,8 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
     description: '',
     assistantEmail: '',
     assistantName: '',
-    studentEmails: []
+    studentEmails: [], // Mantener para compatibilidad
+    students: [] // Nuevo: array de objetos {email, name, userId}
   });
   
   const [errors, setErrors] = useState({});
@@ -20,7 +21,8 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
         description: cell.description || '',
         assistantEmail: cell.assistantEmail || '',
         assistantName: cell.assistantName || '',
-        studentEmails: cell.studentEmails || []
+        studentEmails: cell.studentEmails || [], // Compatibilidad hacia atrás
+        students: cell.students || [] // Nuevo formato
       });
     }
   }, [cell]);
@@ -32,8 +34,12 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
       newErrors.name = 'El nombre de la célula es requerido';
     }
 
-    console.log('Validating studentEmails:', formData.studentEmails);
-    if (formData.studentEmails.length === 0) {
+    console.log('Validating students:', formData.students);
+    console.log('Validating studentEmails (legacy):', formData.studentEmails);
+    
+    // Verificar tanto el nuevo formato como el legacy
+    const hasStudents = formData.students.length > 0 || formData.studentEmails.length > 0;
+    if (!hasStudents) {
       newErrors.students = 'Debe asignar al menos un estudiante';
       console.log('Validation error: No students selected');
     }
@@ -59,20 +65,25 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
       console.log('=== DEBUGGING SUBMIT ===');
       console.log('formData.studentEmails:', formData.studentEmails);
       console.log('formData.studentEmails.length:', formData.studentEmails.length);
+      console.log('formData.students:', formData.students);
+      console.log('formData.students.length:', formData.students.length);
       console.log('Full formData:', formData);
       
-      // Only send the fields we need
+      // Preparar datos con ambos formatos para compatibilidad
       const dataToSave = {
         name: formData.name,
         description: formData.description,
         assistantEmail: formData.assistantEmail,
         assistantName: formData.assistantName,
-        studentEmails: formData.studentEmails
+        studentEmails: formData.studentEmails, // Mantener para compatibilidad
+        students: formData.students // Nuevo formato con nombre y email
       };
       
       console.log('FormData before save:', formData);
       console.log('DataToSave:', dataToSave);
       console.log('DataToSave.studentEmails:', dataToSave.studentEmails);
+      console.log('DataToSave.students:', dataToSave.students);
+      console.log('DataToSave.students detailed:', JSON.stringify(dataToSave.students, null, 2));
       
       await onSave(dataToSave);
     } catch (error) {
@@ -83,35 +94,82 @@ const CellForm = ({ cell, students, unassignedStudents, onSave, onCancel, curren
   };
 
   const handleStudentToggle = (studentEmail) => {
+    console.log('🔄 HANDLE STUDENT TOGGLE CALLED');
     console.log('Toggling student:', studentEmail);
     console.log('Current studentEmails:', formData.studentEmails);
+    console.log('Current students:', formData.students);
+    console.log('Available students array:', students);
+    
+    // Encontrar el objeto estudiante completo
+    const studentObj = students.find(s => getStudentEmail(s) === studentEmail);
     
     setFormData(prev => {
-      const newEmails = prev.studentEmails.includes(studentEmail)
-        ? prev.studentEmails.filter(email => email !== studentEmail)
-        : [...prev.studentEmails, studentEmail];
+      const isCurrentlySelected = prev.studentEmails.includes(studentEmail);
+      
+      let newEmails, newStudents;
+      
+      if (isCurrentlySelected) {
+        // Remover estudiante
+        newEmails = prev.studentEmails.filter(email => email !== studentEmail);
+        newStudents = prev.students.filter(s => s.email !== studentEmail);
+      } else {
+        // Agregar estudiante
+        newEmails = [...prev.studentEmails, studentEmail];
+        
+        // Crear objeto estudiante con información completa
+        console.log('=== CREATING STUDENT OBJECT ===');
+        console.log('studentObj found:', studentObj);
+        console.log('studentEmail:', studentEmail);
+        
+        const extractedName = studentObj ? getStudentName(studentObj) : studentEmail;
+        console.log('extractedName from getStudentName:', extractedName);
+        
+        const newStudentObj = {
+          email: studentEmail,
+          name: extractedName,
+          userId: studentObj ? studentObj.userId : null,
+          profileId: studentObj ? studentObj.profile?.id : null
+        };
+        
+        console.log('Final newStudentObj:', newStudentObj);
+        
+        newStudents = [...prev.students, newStudentObj];
+      }
       
       console.log('New studentEmails:', newEmails);
+      console.log('New students:', newStudents);
       
       return {
         ...prev,
-        studentEmails: newEmails
+        studentEmails: newEmails,
+        students: newStudents
       };
     });
   };
 
   const handleSelectAllUnassigned = () => {
     const unassignedEmails = unassignedStudents.map(getStudentEmail).filter(Boolean);
+    const unassignedStudentObjs = unassignedStudents.map(student => ({
+      email: getStudentEmail(student),
+      name: getStudentName(student),
+      userId: student.userId,
+      profileId: student.profile?.id
+    })).filter(s => s.email);
+    
     setFormData(prev => ({
       ...prev,
-      studentEmails: [...new Set([...prev.studentEmails, ...unassignedEmails])]
+      studentEmails: [...new Set([...prev.studentEmails, ...unassignedEmails])],
+      students: [...prev.students, ...unassignedStudentObjs.filter(newStudent => 
+        !prev.students.some(existingStudent => existingStudent.email === newStudent.email)
+      )]
     }));
   };
 
   const handleClearStudents = () => {
     setFormData(prev => ({
       ...prev,
-      studentEmails: []
+      studentEmails: [],
+      students: []
     }));
   };
 

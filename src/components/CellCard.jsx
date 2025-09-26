@@ -115,10 +115,14 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-gray-700">
-              Estudiantes ({cell.studentEmails?.length || 0})
+              Estudiantes ({
+                cell.students && cell.students.length > 0 
+                  ? cell.students.length 
+                  : (cell.studentEmails?.length || 0)
+              })
             </h4>
             
-            {(cell.studentEmails?.length || 0) > 0 && (
+            {((cell.students && cell.students.length > 0) || (cell.studentEmails?.length || 0) > 0) && (
               <button
                 onClick={() => setExpanded(!expanded)}
                 className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
@@ -136,49 +140,88 @@ const CellCard = ({ cell, onEdit, onDelete }) => {
             )}
           </div>
           
-          {!cell.studentEmails || cell.studentEmails.length === 0 ? (
+          {(!cell.students || cell.students.length === 0) && (!cell.studentEmails || cell.studentEmails.length === 0) ? (
             <div className="p-2 bg-yellow-50 rounded-lg text-center">
               <p className="text-sm text-yellow-600">Sin estudiantes asignados</p>
             </div>
           ) : (
             <div className="space-y-1">
-              {/* Preview (first 3 students) */}
-              {!expanded && (
-                <>
-                  {cell.studentEmails.slice(0, 3).map((email, index) => (
-                    <div key={email} className="flex items-center space-x-2 p-1">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 text-xs font-medium">
-                          {email.charAt(0).toUpperCase()}
-                        </span>
+              {(() => {
+                // Usar el nuevo formato si está disponible, sino usar el legacy
+                const studentsToShow = cell.students && cell.students.length > 0 
+                  ? cell.students 
+                  : (cell.studentEmails || []).map(email => ({ email, name: email }));
+                
+                return (
+                  <>
+                    {/* Preview (first 3 students) */}
+                    {!expanded && (
+                      <>
+                        {studentsToShow.slice(0, 3).map((student, index) => {
+                          const displayName = student.name || student.email;
+                          const displayEmail = student.email;
+                          
+                          return (
+                            <div key={student.email || index} className="flex items-center space-x-2 p-1">
+                              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 text-xs font-medium">
+                                  {displayName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-gray-900 truncate font-medium">
+                                  {displayName}
+                                </div>
+                                {displayName !== displayEmail && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    {displayEmail}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {studentsToShow.length > 3 && (
+                          <div className="text-xs text-gray-500 pl-8">
+                            +{studentsToShow.length - 3} estudiantes más...
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Full list */}
+                    {expanded && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {studentsToShow.map((student, index) => {
+                          const displayName = student.name || student.email;
+                          const displayEmail = student.email;
+                          
+                          return (
+                            <div key={student.email || index} className="flex items-center space-x-2 p-1">
+                              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 text-xs font-medium">
+                                  {displayName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-gray-900 truncate font-medium">
+                                  {displayName}
+                                </div>
+                                {displayName !== displayEmail && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    {displayEmail}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <span className="text-sm text-gray-700 truncate">{email}</span>
-                    </div>
-                  ))}
-                  
-                  {cell.studentEmails.length > 3 && (
-                    <div className="text-xs text-gray-500 pl-8">
-                      +{cell.studentEmails.length - 3} estudiantes más...
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {/* Full list */}
-              {expanded && (
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {cell.studentEmails.map((email) => (
-                    <div key={email} className="flex items-center space-x-2 p-1">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 text-xs font-medium">
-                          {email.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="text-sm text-gray-700 truncate">{email}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>

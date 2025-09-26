@@ -66,6 +66,7 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
         assistantEmail: String(cellData.assistantEmail || '').trim(),
         assistantName: String(cellData.assistantName || '').trim(),
         studentEmails: Array.isArray(cellData.studentEmails) ? cellData.studentEmails.filter(email => email && email.trim()) : [],
+        students: Array.isArray(cellData.students) ? cellData.students.filter(student => student && student.email) : [], // ✅ NUEVO CAMPO
         courseId: String(courseId || ''),
         courseName: String(courseName || '')
       };
@@ -78,6 +79,7 @@ const CellManagement = ({ courseId, courseName, students, accessToken, currentUs
       });
       
       console.log('Clean data:', cleanData); // Debug log
+      console.log('Clean data students:', cleanData.students); // Debug students specifically
 
       if (editingCell) {
         // Update existing cell
